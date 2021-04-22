@@ -1,4 +1,4 @@
 <launch>
-<node pkg="team22" type="[task1 node file name]" name="[task1 node description]" output="screen">
+<node pkg="team22" type="obst_avoid.py" name="Obstacle Avoidance Node" output="screen">
 </node>
 </launch>
