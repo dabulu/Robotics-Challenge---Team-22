@@ -1,0 +1,4 @@
+<launch>
+<node pkg="team22" type="[task1 node file name]" name="[task1 node description]" output="screen">
+</node>
+</launch>
