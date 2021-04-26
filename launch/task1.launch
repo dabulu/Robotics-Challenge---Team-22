@@ -1,4 +1,6 @@
 <launch>
-<node pkg="team22" type="obst_avoid.py" name="Obstacle Avoidance Node" output="screen">
-</node>
+  <node name="obst_avoid_client_node" pkg="team22" type="obst_client.py" output="screen">
+  </node>
+  <node name="obst_avoid_server_node" pkg="team22" type="obst_server.py" output="screen">
+  </node>
 </launch>
