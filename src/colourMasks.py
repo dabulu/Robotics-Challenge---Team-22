@@ -59,5 +59,25 @@ def getMask(img, colour):
     else:
         if colour > 5 or colour < 0:
             print("Invalid colour integer, input 0 to 5")
-        mask = cv2.inRange(img, colour_thresholds[colour][0], colour_threshold[colour][1])
+        mask = cv2.inRange(img, colour_thresholds[colour][0], colour_thresholds[colour][1])
     return mask
+
+def checkMaskOutputWithColour(img, colour):
+    """
+    Check that a mask has an effect on the input image using colour input
+    """
+    return 255 in getMask(img, colour)
+
+def checkMaskOutput(mask):
+    """
+    check mask has an effect
+    """
+    return 255 in mask
+
+def determineColour(img):
+    """
+    return colour whose mask has an effect
+    """
+    for i in range(0,6):
+        if checkMaskOutputWithColour(img, i):
+            return i
