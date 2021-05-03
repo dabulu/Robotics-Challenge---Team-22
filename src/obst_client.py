@@ -48,15 +48,15 @@ class search_client:
         self.client.send_goal(self.goal, feedback_cb=self.feedback_callback)
 
     def main(self):
-        self.send_goal(velocity=0.1, distance=0.5)
+        self.send_goal(velocity=0.15, distance=0.5)
 
         while self.client.get_state() < 2:
             print("STATE: Current state code is {}".format(self.client.get_state()))
 
             # Stop if travelled 2m
-            if self.distance_travelled >= 2:
-                self.client.cancel_goal()
-                rospy.logwarn("Cancelling after moving 2 m without collision")
+            #if self.distance_travelled >= 2:
+            #    self.client.cancel_goal()
+            #    rospy.logwarn("Cancelling after moving 2 m without collision")
 
 
             self.rate.sleep()
