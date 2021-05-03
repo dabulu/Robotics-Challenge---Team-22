@@ -5,6 +5,7 @@ import rospy
 import actionlib
 
 # Import all the necessary ROS message types:
+from com2009_srv_examples.srv import TimedMovement, TimedMovementResponse
 from com2009_actions.msg import SearchFeedback, SearchResult, SearchAction
 from sensor_msgs.msg import LaserScan
 
@@ -72,10 +73,6 @@ class SearchAS(object):
         print("Request to move at {:.2f} m/s until {:.2f} m away from object".format(
             goal.fwd_velocity, goal.approach_distance))
 
-
-        # set the robot velocity:
-        self.robot_controller.set_move_cmd(linear=goal.fwd_velocity)
-
         # Get the current robot odometry
         ref_x = self.robot_odom.posx
         start_x = self.robot_odom.posx
@@ -84,29 +81,46 @@ class SearchAS(object):
         start_y = self.robot_odom.posy
         distance_travelled = 0.0
 
-        while self.lidar['range'] > goal.approach_distance:
-            self.robot_controller.publish()
-            # check if there has been a request to cancel the action mid-way through:
-            if self.actionserver.is_preempt_requested():
-                rospy.loginfo('Cancelling the movement request.')
-                self.actionserver.set_preempted()
-                # stop the robot:
-                self.robot_controller.stop()
-                success = False
-                # exit the loop:
-                break
+        while success:
+            # set the robot velocity:
+            self.robot_controller.set_move_cmd(linear=goal.fwd_velocity)
 
-            # Calculate distance travelled
-            distance_travelled = np.sqrt(pow(start_x-ref_x, 2) + pow(start_y-ref_y, 2))
+            while self.lidar['range'] > goal.approach_distance:
+                self.robot_controller.publish()
+                # check if there has been a request to cancel the action mid-way through:
+                if self.actionserver.is_preempt_requested():
+                    rospy.loginfo('Cancelling the movement request.')
+                    self.actionserver.set_preempted()
+                    # stop the robot:
+                    self.robot_controller.stop()
+                    success = False
+                    # exit the loop:
+                    break
 
-            # populate the feedback message and publish it:
-            rospy.loginfo('Current distance to object: {:.2f} m'.format(self.lidar['range']))
-            self.feedback.current_distance_travelled = distance_travelled
-            self.actionserver.publish_feedback(self.feedback)
+                # Calculate distance travelled
+                distance_travelled = np.sqrt(pow(start_x-ref_x, 2) + pow(start_y-ref_y, 2))
 
-            # update the reference odometry:
-            ref_x = self.robot_odom.posx
-            ref_y = self.robot_odom.posy
+                # populate the feedback message and publish it:
+                rospy.loginfo('Current distance to object: {:.2f} m'.format(self.lidar['range']))
+                self.feedback.current_distance_travelled = distance_travelled
+                self.actionserver.publish_feedback(self.feedback)
+
+                # update the reference odometry:
+                ref_x = self.robot_odom.posx
+                ref_y = self.robot_odom.posy
+
+            self.robot_controller.stop()
+
+            self.robot_controller.set_move_cmd(angular=0.4)
+
+            while self.lidar['range'] <= goal.approach_distance:
+                self.robot_controller.publish()
+                for i in range(40):
+                    r.sleep()
+
+            self.robot_controller.stop()
+
+            continue
 
 
         if success:
