@@ -48,16 +48,12 @@ class search_client:
         self.client.send_goal(self.goal, feedback_cb=self.feedback_callback)
 
     def main(self):
-        self.send_goal(velocity=0.2, distance=0.5)
+        self.send_goal(velocity=0.2, distance=0.45)
 
         StartTime = rospy.get_rostime()
 
         while self.client.get_state() < 2:
             print("STATE: Current state code is {}".format(self.client.get_state()))
-
-            if rospy.get_rostime().secs - StartTime.secs >= 60:
-                self.client.cancel_goal()
-                rospy.logwarn("Cancelling after 60 seconds have passed")
 
             self.rate.sleep()
 

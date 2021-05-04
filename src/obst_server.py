@@ -14,7 +14,7 @@ from move_tb3 import MoveTB3
 from tb3_odometry import TB3Odometry
 
 # Import some other useful Python Modules
-from math import radians
+from math import radians, pi
 import datetime as dt
 import os
 import numpy as np
@@ -45,7 +45,7 @@ class SearchAS(object):
         raw_data = np.array(lidar_data.ranges)
 
         # Directly in front of object
-        angle_tolerance = 5
+        angle_tolerance = 10
         self.lidar['range'] = min(min(raw_data[:angle_tolerance]),
                                min(raw_data[-angle_tolerance:]))
 
@@ -81,7 +81,10 @@ class SearchAS(object):
         start_y = self.robot_odom.posy
         distance_travelled = 0.0
 
-        while success:
+        # Starting Time
+        StartTime = rospy.get_rostime()
+
+        while rospy.get_rostime().secs - StartTime.secs < 60:
             # set the robot velocity:
             self.robot_controller.set_move_cmd(linear=goal.fwd_velocity)
 
@@ -110,18 +113,28 @@ class SearchAS(object):
                 ref_y = self.robot_odom.posy
 
             self.robot_controller.stop()
+            self.robot_controller.set_move_cmd(angular=0.41)
 
-            self.robot_controller.set_move_cmd(angular=0.4)
+            if self.lidar['closest angle'] > 180:
+                self.robot_controller.set_move_cmd(angular=0.41)
+            elif self.lidar['closest angle'] <= 180:
+                self.robot_controller.set_move_cmd(angular=-0.41)
 
-            while self.lidar['range'] <= goal.approach_distance:
-                self.robot_controller.publish()
-                for i in range(40):
-                    r.sleep()
+            self.robot_controller.publish()
+
+            for i in range(41):
+                if self.actionserver.is_preempt_requested():
+                    rospy.loginfo('Cancelling the movement request.')
+                    self.actionserver.set_preempted()
+                    # stop the robot:
+                    self.robot_controller.stop()
+                    success = False
+                    # exit the loop:
+                    break
+                rospy.loginfo('Turning...')
+                r.sleep()
 
             self.robot_controller.stop()
-
-            continue
-
 
         if success:
             rospy.loginfo('Motion finished successfully.')
