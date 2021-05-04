@@ -5,95 +5,147 @@ import rospy
 import actionlib
 
 # Import all the necessary ROS message types:
+from com2009_srv_examples.srv import TimedMovement, TimedMovementResponse
 from com2009_actions.msg import SearchFeedback, SearchResult, SearchAction
 from sensor_msgs.msg import LaserScan
 
-# Import some other modules from within this package
+# Import some other modules from within this package (copied from other package)
 from move_tb3 import MoveTB3
 from tb3_odometry import TB3Odometry
 
 # Import some other useful Python Modules
-from math import sqrt, pow
+from math import radians, pi
+import datetime as dt
+import os
 import numpy as np
 
-class SearchActionServer(object):
+class SearchAS(object):
     feedback = SearchFeedback()
     result = SearchResult()
 
     def __init__(self):
+        # Initialise action server
         self.actionserver = actionlib.SimpleActionServer("/search_action_server",
             SearchAction, self.action_server_launcher, auto_start=False)
         self.actionserver.start()
 
-        self.scan_subscriber = rospy.Subscriber("/scan",
-            LaserScan, self.scan_callback)
+        # Lidar subscriber
+        self.lidar_subscriber = rospy.Subscriber('/scan', LaserScan, self.callback_lidar)
+        self.lidar = {'range': 0.0,
+                      'closest': 0.0,
+                      'closest angle': 0}
 
+        # Robot movement and odometry
         self.robot_controller = MoveTB3()
         self.robot_odom = TB3Odometry()
-        self.arc_angles = np.arange(-20, 21)
 
-    def scan_callback(self, scan_data):
-        left_arc = scan_data.ranges[0:21]
-        right_arc = scan_data.ranges[-20:]
-        front_arc = np.array(left_arc[::-1] + right_arc[::-1])
-        self.min_distance = front_arc.min()
-        self.object_angle = self.arc_angles[np.argmin(front_arc)]
+    def callback_lidar(self, lidar_data):
+        """Returns arrays of lidar data"""
+
+        raw_data = np.array(lidar_data.ranges)
+
+        # Directly in front of object
+        angle_tolerance = 10
+        self.lidar['range'] = min(min(raw_data[:angle_tolerance]),
+                               min(raw_data[-angle_tolerance:]))
+
+        # Closest object
+        self.lidar['closest'] = min(raw_data)
+
+        # Angle of closest object
+        self.lidar['closest angle']=raw_data.argmin()
 
     def action_server_launcher(self, goal):
         r = rospy.Rate(10)
 
         success = True
         if goal.fwd_velocity <= 0 or goal.fwd_velocity > 0.26:
-            print("Invalid velocity.  Select a value [np.argmin(front_arc)]between 0 and 0.26 m/s.")
+            print("Invalid fwd_velocity {:.2f}: 0 < fwd_velocity < 0.26".format(goal.fwd_velocity))
             success = False
-        if goal.approach_distance <= 0.2:
-            print("Invalid approach distance: I'll crash!")
-            success = False
-        elif goal.approach_distance > 3.5:
-            print("Invalid approach distance: I can't measure that far.")
+        if goal.approach_distance <=0:
+            print("approach_distance must be > 0 (requested {:.2f})".format(goal.approach_distance))
             success = False
 
         if not success:
             self.actionserver.set_aborted()
             return
 
-        print("Request to move at {:.3f}m/s and stop {:.2f}m infront of any obstacles".format(goal.fwd_velocity, goal.approach_distance))
+        print("Request to move at {:.2f} m/s until {:.2f} m away from object".format(
+            goal.fwd_velocity, goal.approach_distance))
 
-        # Get the current robot odometry:
-        self.posx0 = self.robot_odom.posx
-        self.posy0 = self.robot_odom.posy
+        # Get the current robot odometry
+        ref_x = self.robot_odom.posx
+        start_x = self.robot_odom.posx
 
-        print("The robot will start to move now...")
-        # set the robot velocity:
-        self.robot_controller.set_move_cmd(goal.fwd_velocity, 0.0)
+        ref_y = self.robot_odom.posy
+        start_y = self.robot_odom.posy
+        distance_travelled = 0.0
 
-        while self.min_distance > goal.approach_distance:
+        # Starting Time
+        StartTime = rospy.get_rostime()
+
+        while rospy.get_rostime().secs - StartTime.secs < 60:
+            # set the robot velocity:
+            self.robot_controller.set_move_cmd(linear=goal.fwd_velocity)
+
+            while self.lidar['range'] > goal.approach_distance:
+                self.robot_controller.publish()
+                # check if there has been a request to cancel the action mid-way through:
+                if self.actionserver.is_preempt_requested():
+                    rospy.loginfo('Cancelling the movement request.')
+                    self.actionserver.set_preempted()
+                    # stop the robot:
+                    self.robot_controller.stop()
+                    success = False
+                    # exit the loop:
+                    break
+
+                # Calculate distance travelled
+                distance_travelled = np.sqrt(pow(start_x-ref_x, 2) + pow(start_y-ref_y, 2))
+
+                # populate the feedback message and publish it:
+                rospy.loginfo('Current distance to object: {:.2f} m'.format(self.lidar['range']))
+                self.feedback.current_distance_travelled = distance_travelled
+                self.actionserver.publish_feedback(self.feedback)
+
+                # update the reference odometry:
+                ref_x = self.robot_odom.posx
+                ref_y = self.robot_odom.posy
+
+            self.robot_controller.stop()
+            self.robot_controller.set_move_cmd(angular=0.41)
+
+            # Turn in the opposite direction of the closest obstacles
+            if self.lidar['closest angle'] > 180:
+                self.robot_controller.set_move_cmd(angular=0.41)
+            elif self.lidar['closest angle'] <= 180:
+                self.robot_controller.set_move_cmd(angular=-0.41)
+
             self.robot_controller.publish()
-            # check if there has been a request to cancel the action mid-way through:
-            if self.actionserver.is_preempt_requested():
-                rospy.loginfo("Cancelling the camera sweep.")
-                self.actionserver.set_preempted()
-                # stop the robot:
-                self.robot_controller.stop()
-                success = False
-                # exit the loop:
-                break
 
-            self.distance = sqrt(pow(self.posx0 - self.robot_odom.posx, 2) + pow(self.posy0 - self.robot_odom.posy, 2))
-            # populate the feedback message and publish it:
-            self.feedback.current_distance_travelled = self.distance
-            self.actionserver.publish_feedback(self.feedback)
+            for i in range(41):
+                if self.actionserver.is_preempt_requested():
+                    rospy.loginfo('Cancelling the movement request.')
+                    self.actionserver.set_preempted()
+                    # stop the robot:
+                    self.robot_controller.stop()
+                    success = False
+                    # exit the loop:
+                    break
+                rospy.loginfo('Turning...')
+                r.sleep()
+
+            self.robot_controller.stop()
 
         if success:
-            rospy.loginfo("approach completed sucessfully.")
-            self.result.total_distance_travelled = self.distance
-            self.result.closest_object_distance = self.min_distance
-            self.result.closest_object_angle = self.object_angle
-
+            rospy.loginfo('Motion finished successfully.')
+            self.result.total_distance_travelled = distance_travelled
+            self.result.closest_object_distance = self.lidar['closest']
+            self.result.closest_object_angle = self.lidar['closest angle']
             self.actionserver.set_succeeded(self.result)
             self.robot_controller.stop()
 
 if __name__ == '__main__':
-    rospy.init_node("search_action_server")
-    SearchActionServer()
+    rospy.init_node('search_server')
+    SearchAS()
     rospy.spin()
