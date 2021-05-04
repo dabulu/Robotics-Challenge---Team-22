@@ -50,8 +50,6 @@ class search_client:
     def main(self):
         self.send_goal(velocity=0.2, distance=0.45)
 
-        StartTime = rospy.get_rostime()
-
         while self.client.get_state() < 2:
             print("STATE: Current state code is {}".format(self.client.get_state()))
 

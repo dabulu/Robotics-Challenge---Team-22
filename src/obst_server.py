@@ -115,6 +115,7 @@ class SearchAS(object):
             self.robot_controller.stop()
             self.robot_controller.set_move_cmd(angular=0.41)
 
+            # Turn in the opposite direction of the closest obstacles
             if self.lidar['closest angle'] > 180:
                 self.robot_controller.set_move_cmd(angular=0.41)
             elif self.lidar['closest angle'] <= 180:
