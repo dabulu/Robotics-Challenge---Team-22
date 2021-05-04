@@ -25,6 +25,7 @@ class search_client:
                                                    SearchAction)
         self.client.wait_for_server()
 
+        self.ctrl_c = False
         rospy.on_shutdown(self.shutdown_ops)
 
     def shutdown_ops(self):
