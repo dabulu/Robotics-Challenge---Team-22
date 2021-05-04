@@ -84,7 +84,7 @@ class SearchAS(object):
         # Starting Time
         StartTime = rospy.get_rostime()
 
-        while rospy.get_rostime().secs - StartTime.secs < 60:
+        while rospy.get_rostime().secs - StartTime.secs < 90:
             # set the robot velocity:
             self.robot_controller.set_move_cmd(linear=goal.fwd_velocity)
 
@@ -113,16 +113,17 @@ class SearchAS(object):
                 ref_y = self.robot_odom.posy
 
             self.robot_controller.stop()
-            self.robot_controller.set_move_cmd(angular=0.41)
+            self.robot_controller.set_move_cmd(angular=0.42)
 
             # Turn in the opposite direction of the closest obstacles
             if self.lidar['closest angle'] > 180:
-                self.robot_controller.set_move_cmd(angular=0.41)
+                self.robot_controller.set_move_cmd(angular=0.42)
             elif self.lidar['closest angle'] <= 180:
-                self.robot_controller.set_move_cmd(angular=-0.41)
+                self.robot_controller.set_move_cmd(angular=-0.42)
 
             self.robot_controller.publish()
 
+            # Turn at most 90 degrees
             for i in range(41):
                 if self.actionserver.is_preempt_requested():
                     rospy.loginfo('Cancelling the movement request.')
