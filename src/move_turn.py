@@ -9,6 +9,7 @@ from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion
 # import some useful mathematical operations (and pi), which you may find useful:
 import math
+import colourMasks
 
 class move_square:
 
@@ -82,9 +83,9 @@ class move_square:
         # print the message that has been passed in to the method via the "a_message" input:
         # print(a_message)
         # you could use this to print the current velocity command:
-        print("current velocity: lin.x = {:.1f}, ang.z = {:.1f}".format(self.vel.linear.x, self.vel.angular.z))
+        #print("current velocity: lin.x = {:.1f}, ang.z = {:.1f}".format(self.vel.linear.x, self.vel.angular.z))
         # you could also print the current odometry to the terminal here, if you wanted to:
-        print("current theta_z = {:.3f}".format(self.theta_z))
+        #print("current theta_z = {:.3f}".format(self.theta_z))
 
     def main_loop(self):
         while not self.ctrl_c:

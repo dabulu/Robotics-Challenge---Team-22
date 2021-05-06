@@ -12,7 +12,7 @@ cyan_ut = (95, 255, 255) # upper threshold
 cyan_thresholds = [cyan_lt, cyan_ut]
 
 #--- red ---
-#red hue goes across axis so needs two masks and therefoer two sets of thresholds
+#red hue goes across axis so needs two masks and therefore two sets of thresholds
 red_lt1 = (0, 180, 100)
 red_ut1 = (10, 255, 255)
 red_thresholds1 = [red_lt1, red_ut1]
@@ -36,19 +36,23 @@ blue_lt = (115, 225, 100)
 blue_ut = (130, 255, 255)
 blue_thresholds = [blue_lt, blue_ut]
 
-#--- magenta ---
-magenta_lt = (145, 150, 100)
-magenta_ut = (155, 255, 255)
-magenta_thresholds = [magenta_lt, magenta_ut]
+#--- purple ---
+purple_lt = (145, 150, 100)
+purple_ut = (155, 255, 255)
+purple_thresholds = [purple_lt, purple_ut]
 
 colour_thresholds = [cyan_thresholds, red_thresholds, green_thresholds,
-    yellow_thresholds, blue_thresholds, magenta_thresholds]
+    yellow_thresholds, blue_thresholds, purple_thresholds]
+
+def getColour(val):
+    colours = ["cyan", "red", "green", "yellow", "blue", "purple"]
+    return colours(val)
 
 def getMask(img, colour):
     """
     generates a mask from an image paramater and a colour param
     colour: range of 0 to 5, each integer represents a colour
-    [cyan, red, green, yellow, blue, magenta]
+    [cyan, red, green, yellow, blue, purple]
     [ 0  ,  1 ,   2  ,   3   ,  4  ,    5   ]
     """
     if colour == 1:
