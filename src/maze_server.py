@@ -51,7 +51,7 @@ class SearchAS(object):
                                min(raw_data[-angle_tolerance:]))
 
         # Wider range in front of object
-        wider_tolerance = 40
+        wider_tolerance = 35
         self.lidar['wider range'] = min(min(raw_data[:wider_tolerance]),
                                min(raw_data[-wider_tolerance:]))
 
