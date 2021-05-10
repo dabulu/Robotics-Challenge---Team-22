@@ -34,7 +34,7 @@ class colour_search(object):
         self.move_rate = '' # fast, slow or stop
         self.stop_counter = 0
         self.start_yaw = 0.0
-        self.start_posx = 0.0
+        self.start_posy = 0.0
 
         self.robot_controller = MoveTB3()
         self.robot_odom = TB3Odometry()
@@ -77,7 +77,7 @@ class colour_search(object):
         upper = (130, 255, 255)
         #[turquoise, red, green, yellow, blue, magenta]
         #[     0  ,   1 ,   2  ,   3   ,  4  ,    5   ]
-        mask = colourMasks.getMask(hsv_img, 4)
+        mask = colourMasks.getMask(hsv_img, 2)
         #mask = cv2.inRange(hsv_img, lower, upper)
         res = cv2.bitwise_and(crop_img, crop_img, mask = mask)
 
@@ -101,12 +101,15 @@ class colour_search(object):
 
     def find_target_pillar(self, target):
 
+        # get reference point for start of turn
         self.start_yaw = self.robot_odom.yaw
-        print("Start yaw: {}".format(self.start_yaw))
-
-        complete = False
+        # print("Start yaw: {}".format(self.start_yaw))
+        # set var to stop turn when complete
+        turn_complete = False
+        # stop robot before turn for accurate data
         self.robot_controller.stop()
-        while not complete:
+
+        while not turn_complete:
             # if (self.start_yaw - self.robot_odom.yaw) < 0:
             #     print("Yaw was less than {}".format((self.start_yaw - self.robot_odom.yaw)))
             #     break
@@ -128,34 +131,32 @@ class colour_search(object):
 
             if abs(self.robot_odom.yaw - self.start_yaw) >= target:
                 self.robot_controller.stop()
-                complete = True
+                turn_complete = True
 
-            print("Yaw: {}".format(self.robot_odom.yaw))
+            # print("Yaw: {}".format(self.robot_odom.yaw))
 
             self.robot_controller.publish()
             self.rate.sleep()
-        print("Finished loop")
+        # print("Finished loop")
 
     def main(self):
         while not self.ctrl_c:
 
-            self.start_posx = self.robot_odom.posx
+            # pass time for data to catch up from odom
+            for i in range (0,5):
+                self.rate.sleep()
+
+            self.start_posy = self.robot_odom.posy
             #move to X
             while self.move_forward:
                 self.robot_controller.set_move_cmd(0.2, 0.0)
                 self.robot_controller.publish()
                 self.rate.sleep()
-                print(self.start_posx - self.robot_odom.posx)
-                if abs(self.start_posx - self.robot_odom.posx) > 0.003:
+                # print(self.start_posy - self.robot_odom.posy)
+                if abs(self.start_posy - self.robot_odom.posy) > 1:
                     self.move_forward = False
 
             self.robot_controller.stop()
-
-            #set current yaw
-            # if not self.face_turn:
-            #     self.start_yaw = self.robot_odom.yaw
-            #     print("Start yaw: {}".format(self.start_yaw))
-            #     self.face_turn = True
 
             #set robot to turn right
             print("Turning RIGHT!")
@@ -166,7 +167,7 @@ class colour_search(object):
             while not self.complete:
                 print("Turning LEFT!")
                 self.set_robot_turning(False)
-                self.find_target_pillar(180)
+                self.find_target_pillar(200)
                 print("Turning RIGHT!")
                 self.set_robot_turning(True)
                 self.find_target_pillar(180)
