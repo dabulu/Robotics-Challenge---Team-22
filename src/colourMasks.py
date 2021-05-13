@@ -45,6 +45,9 @@ colour_thresholds = [turquoise_thresholds, red_thresholds, green_thresholds,
     yellow_thresholds, blue_thresholds, purple_thresholds]
 
 def getColour(val):
+    """
+    returns string name of colour from array
+    """
     colours = ["turquoise", "red", "green", "yellow", "blue", "purple"]
     return colours[val]
 
