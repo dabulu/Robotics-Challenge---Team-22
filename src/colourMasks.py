@@ -6,10 +6,10 @@ import cv2
 # thresholds
 # ----------
 
-#--- cyan ---
-cyan_lt = (85, 130, 100) # lower threshold
-cyan_ut = (95, 255, 255) # upper threshold
-cyan_thresholds = [cyan_lt, cyan_ut]
+#--- turquoise ---
+turquoise_lt = (85, 130, 100) # lower threshold
+turquoise_ut = (95, 255, 255) # upper threshold
+turquoise_thresholds = [turquoise_lt, turquoise_ut]
 
 #--- red ---
 #red hue goes across axis so needs two masks and therefore two sets of thresholds
@@ -41,18 +41,18 @@ purple_lt = (145, 150, 100)
 purple_ut = (155, 255, 255)
 purple_thresholds = [purple_lt, purple_ut]
 
-colour_thresholds = [cyan_thresholds, red_thresholds, green_thresholds,
+colour_thresholds = [turquoise_thresholds, red_thresholds, green_thresholds,
     yellow_thresholds, blue_thresholds, purple_thresholds]
 
 def getColour(val):
-    colours = ["cyan", "red", "green", "yellow", "blue", "purple"]
+    colours = ["turquoise", "red", "green", "yellow", "blue", "purple"]
     return colours(val)
 
 def getMask(img, colour):
     """
     generates a mask from an image paramater and a colour param
     colour: range of 0 to 5, each integer represents a colour
-    [cyan, red, green, yellow, blue, purple]
+    [turquoise, red, green, yellow, blue, purple]
     [ 0  ,  1 ,   2  ,   3   ,  4  ,    5   ]
     """
     if colour == 1:
