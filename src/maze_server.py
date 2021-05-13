@@ -18,6 +18,7 @@ from math import radians, pi
 import datetime as dt
 import os
 import numpy as np
+import copy
 
 class SearchAS(object):
     feedback = SearchFeedback()
@@ -40,18 +41,20 @@ class SearchAS(object):
         self.robot_controller = MoveTB3()
         self.robot_odom = TB3Odometry()
 
+        self.current_yaw = 0.0
+
     def callback_lidar(self, lidar_data):
         """Returns arrays of lidar data"""
 
         raw_data = np.array(lidar_data.ranges)
 
         # Directly in front of object
-        angle_tolerance = 10
+        angle_tolerance = 12
         self.lidar['range'] = min(min(raw_data[:angle_tolerance]),
                                min(raw_data[-angle_tolerance:]))
 
         # Wider range in front of object
-        wider_tolerance = 40
+        wider_tolerance = 30
         self.lidar['wider range'] = min(min(raw_data[:wider_tolerance]),
                                min(raw_data[-wider_tolerance:]))
 
@@ -90,7 +93,7 @@ class SearchAS(object):
         # Starting Time
         StartTime = rospy.get_rostime()
 
-        while rospy.get_rostime().secs - StartTime.secs < 120:
+        while rospy.get_rostime().secs - StartTime.secs < 150:
             # set the robot velocity:
             self.robot_controller.set_move_cmd(linear=goal.fwd_velocity)
 
@@ -120,28 +123,27 @@ class SearchAS(object):
                 ref_y = self.robot_odom.posy
 
             self.robot_controller.stop()
-            self.robot_controller.set_move_cmd(angular=0.22)
 
-            # Turn in the opposite direction of the closest obstacles
-            if self.lidar['closest angle'] > 180:
-                self.robot_controller.set_move_cmd(angular=0.22)
-            elif self.lidar['closest angle'] <= 180:
-                self.robot_controller.set_move_cmd(angular=-0.22)
 
-            # Turn till there is nothing in front of the robot
-            while self.lidar['wider range'] <= goal.approach_distance:
-                self.robot_controller.publish()
-                if self.actionserver.is_preempt_requested():
-                    rospy.loginfo('Cancelling the movement request.')
-                    self.actionserver.set_preempted()
-                    # stop the robot:
+            # Turn right at most 90 degrees
+            self.robot_controller.set_move_cmd(angular=-0.6)
+            self.current_yaw = copy.deepcopy(self.robot_odom.yaw2)
+            while abs(self.current_yaw - self.robot_odom.yaw2) < pi/2:
+                if self.lidar['wider range'] > 0.5:
                     self.robot_controller.stop()
-                    success = False
-                    # exit the loop:
                     break
-                rospy.loginfo('Turning...')
-                rospy.loginfo('{} seconds have passed'.format(rospy.get_rostime().secs - StartTime.secs))
+                self.robot_controller.publish()
+            self.robot_controller.stop()
 
+
+            # Turn left at most 180 degrees
+            self.robot_controller.set_move_cmd(angular=0.6)
+            self.current_yaw = copy.deepcopy(self.robot_odom.yaw2)
+            while abs(self.current_yaw - self.robot_odom.yaw2) < pi*1.5:
+                if self.lidar['wider range'] > 0.5:
+                    self.robot_controller.stop()
+                    break
+                self.robot_controller.publish()
             self.robot_controller.stop()
 
         if success:
