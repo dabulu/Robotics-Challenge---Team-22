@@ -17,13 +17,13 @@ from tb3_odometry import TB3Odometry
 #import colourMasks.py for image thresholds
 import colourMasks
 
+
+
 class colour_search(object):
 
     def __init__(self):
         rospy.init_node('turn_and_face')
-        self.base_image_path = '/home/student/myrosdata/week6_images'
-        self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw",
-            Image, self.camera_callback)
+        self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
         self.cvbridge_interface = CvBridge()
 
         self.robot_controller = MoveTB3()
@@ -42,13 +42,24 @@ class colour_search(object):
         self.complete = False
         #var to check if move forward is needed
         self.move_forward = True
+        #var to turn to check the color
+        self.turn = True
+        #var to turn back facing the front
+        self.turn_back = True
         #var to check if statr yaw has been initiated
         self.face_turn = False
+
+        self.finding_pillar = False
+
+        self.get_colour = False
+
+        self.colour = -1
 
         self.ctrl_c = False
         rospy.on_shutdown(self.shutdown_ops)
 
         self.rate = rospy.Rate(5)
+
 
         self.m00 = 0
         self.m00_min = 10000
@@ -58,13 +69,16 @@ class colour_search(object):
         cv2.destroyAllWindows()
         self.ctrl_c = True
 
+
     def camera_callback(self, img_data):
+        global waiting_for_image
         try:
             cv_img = self.cvbridge_interface.imgmsg_to_cv2(img_data, desired_encoding="bgr8")
         except CvBridgeError as e:
             print(e)
 
         height, width, channels = cv_img.shape
+
         crop_width = width - 800
         crop_height = 400
         crop_x = int((width/2) - (crop_width/2))
@@ -73,20 +87,26 @@ class colour_search(object):
         crop_img = cv_img[crop_y:crop_y+crop_height, crop_x:crop_x+crop_width]
         hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
 
-        lower = (115, 224, 100)
-        upper = (130, 255, 255)
-        #[turquoise, red, green, yellow, blue, magenta]
-        #[     0  ,   1 ,   2  ,   3   ,  4  ,    5   ]
-        mask = colourMasks.getMask(hsv_img, 2)
-        #mask = cv2.inRange(hsv_img, lower, upper)
-        res = cv2.bitwise_and(crop_img, crop_img, mask = mask)
+        if self.get_colour:
+            self.colour = colourMasks.determineColour(hsv_img)
+            print("SEARCH INITIATED: The target colour is {}.".format(colourMasks.getColour(self.colour)))
+            # print(self.colour)
+            self.get_colour = False
 
-        m = cv2.moments(mask)
-        self.m00 = m['m00']
-        self.cy = m['m10'] / (m['m00'] + 1e-5)
 
-        if self.m00 > self.m00_min:
-            cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 2)
+        if self.finding_pillar:
+            #[turquoise, red, green, yellow, blue, magenta]
+            #[     0  ,   1 ,   2  ,   3   ,  4  ,    5   ]
+            mask = colourMasks.getMask(hsv_img, self.colour)
+            #mask = cv2.inRange(hsv_img, lower, upper)
+            res = cv2.bitwise_and(crop_img, crop_img, mask = mask)
+
+            m = cv2.moments(mask)
+            self.m00 = m['m00']
+            self.cy = m['m10'] / (m['m00'] + 1e-5)
+
+            if self.m00 > self.m00_min:
+                cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 2)
 
         cv2.imshow('cropped image', crop_img)
         cv2.waitKey(1)
@@ -147,6 +167,24 @@ class colour_search(object):
                 self.rate.sleep()
 
             self.start_posy = self.robot_odom.posy
+
+            #turn to check color
+            while self.turn:
+                self.robot_controller.set_move_cmd(0.0, 0.3)
+                self.robot_controller.publish()
+                self.rate.sleep()
+                if abs(self.robot_odom.posy) > 1.0493:
+                    self.turn = False
+                    self.get_colour = True
+
+            #turn back to initial position
+            while self.turn_back:
+                self.robot_controller.set_move_cmd(0.0, -0.3)
+                self.robot_controller.publish()
+                self.rate.sleep()
+                if abs(self.robot_odom.posy) < 1.0425:
+                    self.turn_back = False
+
             #move to X
             while self.move_forward:
                 self.robot_controller.set_move_cmd(0.2, 0.0)
@@ -155,6 +193,9 @@ class colour_search(object):
                 # print(self.start_posy - self.robot_odom.posy)
                 if abs(self.start_posy - self.robot_odom.posy) > 1:
                     self.move_forward = False
+                    self.finding_pillar = True
+
+
 
             self.robot_controller.stop()
 
