@@ -16,6 +16,7 @@ from tb3_odometry import TB3Odometry
 
 #import colourMasks.py for image thresholds
 import colourMasks
+import math
 
 
 
@@ -35,6 +36,7 @@ class colour_search(object):
         self.stop_counter = 0
         self.start_yaw = 0.0
         self.start_posy = 0.0
+        self.start_posx = 0.0
 
         self.robot_controller = MoveTB3()
         self.robot_odom = TB3Odometry()
@@ -63,6 +65,11 @@ class colour_search(object):
 
         self.m00 = 0
         self.m00_min = 10000
+
+
+
+
+        self.finished_initialising = False
 
     def shutdown_ops(self):
         self.robot_controller.stop()
@@ -159,59 +166,88 @@ class colour_search(object):
             self.rate.sleep()
         # print("Finished loop")
 
+    def get_bearing(self, a1, a2, b1 , b2):
+        if (a1 == b1 and a2 == b2):
+            return False
+        theta = math.atan2(b1 - a1, b2 - a2)
+        if (theta < 0.0):
+            return math.degrees(theta + 2*math.pi)
+        return math.degrees(theta)
+
+    def get_percentage_difference(self, a, b):
+        if a > b:
+            if a == 0:
+                return 0
+            return ((a-b)/a)*100
+        elif b > a:
+            return ((b-a)/b)*100
+        else:
+            return 0
+
+    def check_facing_home(self, posy, posx, yaw):
+        original_posy, original_posx = self. start_posy, self.start_posx
+        bearing = self.get_bearing(posy, posx, original_posy, original_posx)
+        yaw = self.get_yaw_as_bearing(yaw)
+        # print("Bearing: {}".format(points_bearing))
+        pd = self.get_percentage_difference(bearing, yaw)
+        print("Percentage Difference: {}".format(pd))
+        if pd <= 12.5:
+            return True
+        else:
+            return False
+
+    def get_yaw_as_bearing(self, yaw):
+        if yaw < 0:
+            return yaw + 360
+        else:
+            return yaw
+
     def main(self):
         while not self.ctrl_c:
 
             # pass time for data to catch up from odom
-            for i in range (0,5):
-                self.rate.sleep()
+            if not self.finished_initialising:
+                for i in range (0,5):
+                    self.rate.sleep()
 
-            self.start_posy = self.robot_odom.posy
+                self.start_posy = self.robot_odom.posy
+                self.start_posx = self.robot_odom.posx
+                self.finished_initialising = True
 
-            #turn to check color
-            while self.turn:
-                self.robot_controller.set_move_cmd(0.0, 0.3)
-                self.robot_controller.publish()
-                self.rate.sleep()
-                if abs(self.robot_odom.posy) > 1.0493:
-                    self.turn = False
-                    self.get_colour = True
+            # print("Position A: ({}, {})".format(round(self.robot_odom.posy, 2), round(self.robot_odom.posx, 2)))
+            # print("Position B: ({}, {})".format(round(self.start_posy, 2), round(self.start_posx, 2)))
+            # bearing = self.get_bearing(self.robot_odom.posy, self.robot_odom.posx, self.start_posy, self.start_posx)
+            # yaw = self.get_yaw_as_bearing(self.robot_odom.yaw)
+            # print("Bearing: {}".format(round(bearing, 3)))
+            # print("Yaw: {}".format(yaw))
+            # print("Percentage Difference: {}".format(self.get_percentage_difference(bearing, yaw)))
+            print("Facing?: {}".format(self.check_facing_home(self.robot_odom.posy, self.robot_odom.posx, self.robot_odom.yaw)))
+            self.rate.sleep()
 
-            #turn back to initial position
-            while self.turn_back:
-                self.robot_controller.set_move_cmd(0.0, -0.3)
-                self.robot_controller.publish()
-                self.rate.sleep()
-                if abs(self.robot_odom.posy) < 1.0425:
-                    self.turn_back = False
+            # #turn to check color
+            # while self.turn:
+            #     self.robot_controller.set_move_cmd(0.0, 0.3)
+            #     self.robot_controller.publish()
+            #     self.rate.sleep()
+            #     if abs(self.robot_odom.posy) > 1.0493:
+            #         self.turn = False
+            #         self.get_colour = True
+            #
+            # #turn back to initial position
+            # while self.turn_back:
+            #     self.robot_controller.set_move_cmd(0.0, -0.3)
+            #     self.robot_controller.publish()
+            #     self.rate.sleep()
+            #     if abs(self.robot_odom.posy) < 1.0425:
+            #         self.turn_back = False
+            #
+            # #explore
+            # self.move_forward = False
+            # self.finding_pillar = True
 
-            #move to X
-            while self.move_forward:
-                self.robot_controller.set_move_cmd(0.2, 0.0)
-                self.robot_controller.publish()
-                self.rate.sleep()
-                # print(self.start_posy - self.robot_odom.posy)
-                if abs(self.start_posy - self.robot_odom.posy) > 1:
-                    self.move_forward = False
-                    self.finding_pillar = True
+            #beacon
 
-
-
-            self.robot_controller.stop()
-
-            #set robot to turn right
-            print("Turning RIGHT!")
-            self.set_robot_turning(True)
-            #try to find pillar turning right
-            self.find_target_pillar(90)
-            #otherwise turn left if not finished
-            while not self.complete:
-                print("Turning LEFT!")
-                self.set_robot_turning(False)
-                self.find_target_pillar(200)
-                print("Turning RIGHT!")
-                self.set_robot_turning(True)
-                self.find_target_pillar(180)
+            #check beacon is not home walls
 
             if self.complete:
                 print("SEARCH COMPLETE: The robot is now facing the target pillar.")
