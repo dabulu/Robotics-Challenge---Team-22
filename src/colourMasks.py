@@ -45,14 +45,11 @@ colour_thresholds = [turquoise_thresholds, red_thresholds, green_thresholds,
     yellow_thresholds, purple_thresholds, blue_thresholds]
 
 def getColour(val):
-
-    colours = ["turquoise", "red", "green", "yellow", "purple", "blue"]
-    return colours[val]
-
     """
     returns string name of colour from array
     """
-    # colours = ["turquoise", "red", "green", "yellow", "blue", "purple"]
+    colours = ["turquoise", "red", "green", "yellow", "purple", "blue"]
+    return colours[val]
 
 
 
@@ -60,7 +57,7 @@ def getMask(img, colour):
     """
     generates a mask from an image paramater and a colour param
     colour: range of 0 to 5, each integer represents a colour
-    [turquoise, red, green, yellow, blue, purple]
+    [turquoise, red, green, yellow, purple, blue]
     [ 0  ,  1 ,   2  ,   3   ,  4  ,    5   ]
     """
     if colour == 1:
