@@ -42,10 +42,17 @@ purple_ut = (155, 255, 255)
 purple_thresholds = [purple_lt, purple_ut]
 
 colour_thresholds = [turquoise_thresholds, red_thresholds, green_thresholds,
-    yellow_thresholds, purple_thresholds, blue_thresholds]
+    yellow_thresholds, blue_thresholds, purple_thresholds]
 
 def getColour(val):
-    colours = ["turquoise", "red", "green", "yellow", "purple", "blue"]
+<<<<<<< HEAD
+    colours = ["turquoise", "red", "green", "yellow", "blue", "purple"]
+=======
+    """
+    returns string name of colour from array
+    """
+    colours = ["turquoise", "red", "green", "yellow", "blue", "purple"]
+>>>>>>> 15eefc87c1281d21632e42070f1103be4e67a8e6
     return colours[val]
 
 def getMask(img, colour):
