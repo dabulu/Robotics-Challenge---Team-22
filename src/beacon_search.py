@@ -58,14 +58,16 @@ class colour_search(object):
         #var to check if statr yaw has been initiated
         self.face_turn = False
 
+        self.pillar_lined_with_home = False
+
         self.finding_pillar = False
 
         self.get_colour = False
 
         self.colour = -1
-        
-        self.check = True 
-        
+
+        self.check = True
+
         self.counter = 0
 
         self.ctrl_c = False
@@ -73,6 +75,7 @@ class colour_search(object):
 
         self.rate = rospy.Rate(5)
 
+        self.area = 0
 
         self.m00 = 0
         self.m00_min = 10000
@@ -124,10 +127,10 @@ class colour_search(object):
             self.get_colour = False
 
         if self.finding_pillar:
-            #[turquoise, red, green, yellow, blue, magenta]
+            #[turquoise, red, green, yellow, magenta, blue]
             #[     0  ,   1 ,   2  ,   3   ,  4  ,    5   ]
             #CHANGE BACK TO SELF.COLOUR AFTER DEBUGGING
-            mask = colourMasks.getMask(hsv_img, 2)
+            mask = colourMasks.getMask(hsv_img, 0)
             #mask = cv2.inRange(hsv_img, lower, upper)
             res = cv2.bitwise_and(crop_img, crop_img, mask = mask)
 
@@ -136,17 +139,17 @@ class colour_search(object):
             self.cy = m['m10'] / (m['m00'] + 1e-5)
 
             if self.m00 > self.m00_min:
-                cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 2)
+                cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 4)
 
         cv2.imshow('cropped image', crop_img)
         cv2.waitKey(1)
 
     def set_robot_turning(self, turning_right):
         if turning_right:
-            self.turn_vel_slow = -0.1
+            self.turn_vel_slow = -0.15
             self.turn_vel_fast =  -0.5
         else:
-            self.turn_vel_slow = 0.1
+            self.turn_vel_slow = 0.15
             self.turn_vel_fast = 0.5
 
     def find_target_pillar(self, target):
@@ -167,15 +170,21 @@ class colour_search(object):
             if self.m00 > self.m00_min:
                 # blob detected
                 if self.cy >= 560-100 and self.cy <= 560+100:
-                    # if not self.check_facing_home(self.robot_odom.posy, self.robot_odom.posx, self.robot_odom.yaw):
-                    #     # if self.move_rate == 'slow':
-                    self.move_towards_pillar()
-                    self.complete = True
-                    self.robot_controller.stop()
-                    break
-                # else:
-                #     # self.move_rate = 'slow'
-                #     self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
+                    if not self.pillar_lined_with_home:
+                        self.move_towards_pillar()
+                        self.complete = True
+                        self.robot_controller.stop()
+                        break
+                    if not self.check_facing_home(self.robot_odom.posy, self.robot_odom.posx, self.robot_odom.yaw):
+                        #     # if self.move_rate == 'slow':
+                        self.move_towards_pillar()
+                        self.complete = True
+                        self.robot_controller.stop()
+                        break
+                else:
+                    if not self.check_facing_home(self.robot_odom.posy, self.robot_odom.posx, self.robot_odom.yaw):
+                        # self.move_rate = 'slow'
+                        self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
             else:
                 # self.move_rate = 'fast'
                 self.robot_controller.set_move_cmd(0.0, self.turn_vel_fast)
@@ -227,9 +236,10 @@ class colour_search(object):
             return yaw
 
     def move_towards_pillar(self):
+        print("BEACON DETECTED: Beaconing initiated.")
         while not self.complete:
-            self.robot_controller.set_move_cmd(0.1, 0)
-            print(self.lidar['range'])
+            self.robot_controller.set_move_cmd(0.3, 0)
+            # print(self.lidar['range'])
             if self.lidar['range'] <= 0.25:
                 self.robot_controller.stop()
                 print("BEACONING COMPLETE: The robot has now stopped.")
@@ -265,61 +275,84 @@ class colour_search(object):
             # self.start_posx = -2.067
             #     self.finished_initialising = True
 
-            # print("Position A: ({}, {})".format(round(self.robot_odom.posy, 2), round(self.robot_odom.posx, 2)))
-            # print("Position B: ({}, {})".format(round(self.start_posy, 2), round(self.start_posx, 2)))
-            # bearing = self.get_bearing(self.robot_odom.posy, self.robot_odom.posx, self.start_posy, self.start_posx)
-            # yaw = self.get_yaw_as_bearing(self.robot_odom.yaw)
-            # print("Bearing: {}".format(round(bearing, 3)))
-            # print("Yaw: {}".format(yaw))
-            # print("Percentage Difference: {}".format(self.get_percentage_difference(bearing, yaw)))
-            # print("Facing?: {}".format(self.check_facing_home(self.robot_odom.posy, self.robot_odom.posx, self.robot_odom.yaw)))
-            
-            """ 
-             [A , B , C] 
+
+            """
+             [A , B , C]
              [1 , 2 , 3]
              check which area its in
             """
             while self.check:
                 if self.robot_odom.posy > 1.960 and self.robot_odom.posy < 1.990:
                     print('Position C')
-                    self.counter = 3
+                    self.area = "C"
                 elif self.robot_odom.posy > 2.0600 and self.robot_odom.posy < 2.0680:
-                    print('Position B')
-                    self.counter = 2
+                    # print('Position B')
+                    self.area = "B"
                 else:
                     print('Position A')
-                    self.counter = 1
-                
-                self.check = False        
-            
-            self.turn(90)
-            self.get_colour = True
-            print("turn finished")
-            self.turn(90, False)
+                    self.area = "A"
+
+                self.check = False
+
+            self.start_posy = self.robot_odom.posy
+            self.start_posx = self.robot_odom.posx
+
+            # self.turn(90)
+            # self.get_colour = True
+            # # print("turn finished")
+            # self.turn(90, False)
+
+            if self.area == "B":
+                while self.robot_odom.posy >= 1.09:
+                    self.robot_controller.set_move_cmd(0.15, 0.3)
+                    self.robot_controller.publish()
+                    self.rate.sleep()
+                while self.robot_odom.posx <= -0.1:
+                    self.robot_controller.set_move_cmd(0.2, 0.07)
+                    self.robot_controller.publish()
+                    self.rate.sleep()
+                self.robot_controller.stop()
+                self.finding_pillar = True
+                self.set_robot_turning(True)
+                self.find_target_pillar(45)
+                if self.complete:
+                    break
+                self.set_robot_turning(False)
+                self.pillar_lined_with_home = True
+                self.find_target_pillar(160)
+                self.pillar_lined_with_home = False
+                if self.complete:
+                    break
+                self.finding_pillar = False
+                self.turn(45)
+                while self.robot_odom.posx >= -1.2:
+                    self.robot_controller.set_move_cmd(0.3, -0.02)
+                    self.robot_controller.publish()
+                    self.rate.sleep()
+                while self.robot_odom.posy >= 0.2:
+                    self.robot_controller.set_move_cmd(0.15, 0.25)
+                    self.robot_controller.publish()
+                    self.rate.sleep()
+                while self.robot_odom.posx <= -0.1:
+                    self.robot_controller.set_move_cmd(0.3, 0.01)
+                    self.robot_controller.publish()
+                    self.rate.sleep()
+                self.robot_controller.stop()
+                self.turn(15, False)
+                self.finding_pillar = True
+                self.set_robot_turning(False)
+                self.find_target_pillar(120)
+                if self.complete:
+                    break
+                self.find_target_pillar(140)
+
+            break
+
             # self.finding_pillar = True
             # self.set_robot_turning(True)
             # self.find_target_pillar(90)
-            
-            # #turn to check color
-            # while self.turn:
-            #     self.robot_controller.set_move_cmd(0.0, 0.3)
-            #     self.robot_controller.publish()
-            #     self.rate.sleep()
-            #     if abs(self.robot_odom.posy) > 1.0493:
-            #         self.turn = False
-            #         self.get_colour = True
-            #
-            # #turn back to initial position
-            # while self.turn_back:
-            #     self.robot_controller.set_move_cmd(0.0, -0.3)
-            #     self.robot_controller.publish()
-            #     self.rate.sleep()
-            #     if abs(self.robot_odom.posy) < 1.0425:
-            #         self.turn_back = False
-            #
-            # #explore
-            # self.move_forward = False
-            # self.finding_pillar = True
+
+
 
             #beacon
 
