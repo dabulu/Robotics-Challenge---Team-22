@@ -381,6 +381,7 @@ class beacon_search(object):
                 self.find_target_pillar(140)
 
             elif self.area == "C":
+                self.turn(90, False)
                 while self.robot_odom.posy >= 1.3:
                     self.robot_controller.set_move_cmd(0.3, -0.05)
                     self.robot_controller.publish()
