@@ -22,7 +22,7 @@ import colourMasks
 class colour_search(object):
 
     def __init__(self):
-        rospy.init_node('turn_and_face')
+        rospy.init_node('pillar_detection')
         self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
         self.cvbridge_interface = CvBridge()
 
@@ -200,16 +200,16 @@ class colour_search(object):
             self.robot_controller.stop()
 
             #set robot to turn right
-            print("Turning RIGHT!")
+            # print("Turning RIGHT!")
             self.set_robot_turning(True)
             #try to find pillar turning right
             self.find_target_pillar(90)
             #otherwise turn left if not finished
             while not self.complete:
-                print("Turning LEFT!")
+                # print("Turning LEFT!")
                 self.set_robot_turning(False)
                 self.find_target_pillar(200)
-                print("Turning RIGHT!")
+                # print("Turning RIGHT!")
                 self.set_robot_turning(True)
                 self.find_target_pillar(180)
 

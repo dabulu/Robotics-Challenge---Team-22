@@ -162,9 +162,6 @@ class beacon_search(object):
         self.robot_controller.stop()
 
         while not turn_complete:
-            # if (self.start_yaw - self.robot_odom.yaw) < 0:
-            #     print("Yaw was less than {}".format((self.start_yaw - self.robot_odom.yaw)))
-            #     break
 
             if self.m00 > self.m00_min:
                 # print("detected")
@@ -288,14 +285,8 @@ class beacon_search(object):
         while not self.ctrl_c:
 
             # pass time for data to catch up from odom
-            # if not self.finished_initialising:
             for i in range (0,5):
                 self.rate.sleep()
-            #
-            # self.start_posy = -1.974
-            # self.start_posx = -2.067
-            #     self.finished_initialising = True
-
 
             """
              [A , B , C]
@@ -390,6 +381,7 @@ class beacon_search(object):
                 self.find_target_pillar(140)
 
             elif self.area == "C":
+                self.turn(90, False)
                 while self.robot_odom.posy >= 1.3:
                     self.robot_controller.set_move_cmd(0.3, -0.05)
                     self.robot_controller.publish()
