@@ -12,6 +12,7 @@ class TB3Odometry(object):
             orientation.y, orientation.z, orientation.w],'sxyz')
 
         self.yaw = self.round(degrees(yaw), 4)
+        self.yaw2 = yaw
         self.posx = self.round(position.x, 4)
         self.posy = self.round(position.y, 4)
 
