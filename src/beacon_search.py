@@ -113,7 +113,7 @@ class beacon_search(object):
         height, width, channels = cv_img.shape
 
         crop_width = width - 800
-        crop_height = 180
+        crop_height = 160
         crop_x = int((width/2) - (crop_width/2))
         crop_y = int((height/2) - (crop_height/2))
 
@@ -140,7 +140,7 @@ class beacon_search(object):
             if self.m00 > self.m00_min:
                 cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 4)
 
-        cv2.imshow('cropped image', crop_img)
+        # cv2.imshow('cropped image', crop_img)
         cv2.waitKey(1)
 
     def set_robot_turning(self, turning_right):
@@ -315,26 +315,32 @@ class beacon_search(object):
 
             if self.area == "A":
                 self.forwards(1.450, "y")
-                self.turn(85, False)
+                self.turn(80, False)
                 self.forwards(0.200, "x")
+                self.finding_pillar = True
                 self.find_target_pillar(30)
                 if self.complete:
                     break
                 self.set_robot_turning(False)
                 self.find_target_pillar(180)
+                self.find_target_pillar(15)
                 if self.complete:
                     break
-                self.turn(130, False)
+                self.turn(151, False)
                 while self.robot_odom.posx <= 1.600:
                     self.robot_controller.set_move_cmd(0.2, 0.0)
                     self.robot_controller.publish()
                     self.rate.sleep()
-                self.turn(80)
+                self.turn(78)
                 while self.robot_odom.posy <= 1.1631:
                     self.robot_controller.set_move_cmd(0.2, 0.0)
                     self.robot_controller.publish()
                     self.rate.sleep()
-                self.find_target_pillar(160)
+                self.pillar_lined_with_home = True
+                self.find_target_pillar(90)
+                if self.complete:
+                    break
+                self.find_target_pillar(90)
 
             elif self.area == "B":
                 while self.robot_odom.posy >= 1.09:
@@ -381,6 +387,7 @@ class beacon_search(object):
                 self.find_target_pillar(140)
 
             elif self.area == "C":
+                self.turn(90, False)
                 while self.robot_odom.posy >= 1.3:
                     self.robot_controller.set_move_cmd(0.3, -0.05)
                     self.robot_controller.publish()
@@ -404,6 +411,8 @@ class beacon_search(object):
                     self.robot_controller.publish()
                 self.robot_controller.stop()
                 self.find_target_pillar(90)
+
+            break
 
             if self.complete:
                 print("SEARCH COMPLETE: The robot is now facing the target pillar.")
