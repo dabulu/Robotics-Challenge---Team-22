@@ -108,7 +108,7 @@ class colour_search(object):
             if self.m00 > self.m00_min:
                 cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 2)
 
-        cv2.imshow('cropped image', crop_img)
+        # cv2.imshow('cropped image', crop_img)
         cv2.waitKey(1)
 
     def set_robot_turning(self, turning_right):
