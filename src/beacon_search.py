@@ -22,10 +22,10 @@ import math
 
 
 
-class colour_search(object):
+class beacon_search(object):
 
     def __init__(self):
-        rospy.init_node('turn_and_face')
+        rospy.init_node('beacon_node')
         self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
         self.lidar_subscriber = rospy.Subscriber('/scan', LaserScan, self.callback_lidar)
         self.cvbridge_interface = CvBridge()
@@ -129,8 +129,7 @@ class colour_search(object):
         if self.finding_pillar:
             #[turquoise, red, green, yellow, magenta, blue]
             #[     0  ,   1 ,   2  ,   3   ,  4  ,    5   ]
-            #CHANGE BACK TO SELF.COLOUR AFTER DEBUGGING
-            mask = colourMasks.getMask(hsv_img, 1)
+            mask = colourMasks.getMask(hsv_img, self.colour)
             #mask = cv2.inRange(hsv_img, lower, upper)
             res = cv2.bitwise_and(crop_img, crop_img, mask = mask)
 
@@ -265,6 +264,26 @@ class colour_search(object):
                 self.robot_controller.stop()
                 turning = False
 
+    def forwards(self, target, pos):
+        straight = True
+        while straight:
+            if pos == "y":
+                    self.robot_controller.set_move_cmd(0.2, 0.0)
+                    self.robot_controller.publish()
+                    self.rate.sleep()
+                    print(abs(self.robot_odom.posy))
+                    if abs(self.robot_odom.posy) <= target:
+                        self.robot_controller.stop()
+                        straight = False
+            elif pos == "x":
+                    self.robot_controller.set_move_cmd(0.2, 0.0)
+                    self.robot_controller.publish()
+                    self.rate.sleep()
+                    # print(abs(self.robot_odom.posx))
+                    if abs(self.robot_odom.posx) <= target:
+                        self.robot_controller.stop()
+                        straight = False
+
     def main(self):
         while not self.ctrl_c:
 
@@ -285,13 +304,13 @@ class colour_search(object):
             """
             while self.check:
                 if self.robot_odom.posy > 1.900 and self.robot_odom.posx > 2:
-                    print('Position C')
+                    # print('Position C')
                     self.area = "C"
                 elif self.robot_odom.posy > 2.0600 and self.robot_odom.posy < 2.080:
                     # print('Position B')
                     self.area = "B"
                 else:
-                    print('Position A')
+                    # print('Position A')
                     self.area = "A"
 
                 self.check = False
@@ -299,12 +318,34 @@ class colour_search(object):
             self.start_posy = self.robot_odom.posy
             self.start_posx = self.robot_odom.posx
 
-            # self.turn(90)
-            # self.get_colour = True
-            # # print("turn finished")
-            # self.turn(90, False)
+            self.turn(90)
+            self.get_colour = True
+            self.turn(90, False)
 
-            if self.area == "B":
+            if self.area == "A":
+                self.forwards(1.450, "y")
+                self.turn(85, False)
+                self.forwards(0.200, "x")
+                self.find_target_pillar(30)
+                if self.complete:
+                    break
+                self.set_robot_turning(False)
+                self.find_target_pillar(180)
+                if self.complete:
+                    break
+                self.turn(130, False)
+                while self.robot_odom.posx <= 1.600:
+                    self.robot_controller.set_move_cmd(0.2, 0.0)
+                    self.robot_controller.publish()
+                    self.rate.sleep()
+                self.turn(80)
+                while self.robot_odom.posy <= 1.1631:
+                    self.robot_controller.set_move_cmd(0.2, 0.0)
+                    self.robot_controller.publish()
+                    self.rate.sleep()
+                self.find_target_pillar(160)
+
+            elif self.area == "B":
                 while self.robot_odom.posy >= 1.09:
                     self.robot_controller.set_move_cmd(0.15, 0.3)
                     self.robot_controller.publish()
@@ -347,6 +388,7 @@ class colour_search(object):
                 if self.complete:
                     break
                 self.find_target_pillar(140)
+
             elif self.area == "C":
                 while self.robot_odom.posy >= 1.3:
                     self.robot_controller.set_move_cmd(0.3, -0.05)
@@ -372,26 +414,12 @@ class colour_search(object):
                 self.robot_controller.stop()
                 self.find_target_pillar(90)
 
-
-
-            break
-
-            # self.finding_pillar = True
-            # self.set_robot_turning(True)
-            # self.find_target_pillar(90)
-
-
-
-            #beacon
-
-            #check beacon is not home walls
-
             if self.complete:
                 print("SEARCH COMPLETE: The robot is now facing the target pillar.")
                 break
 
 if __name__ == '__main__':
-    search_ob = colour_search()
+    search_ob = beacon_search()
     try:
         search_ob.main()
     except rospy.ROSInterruptException:
