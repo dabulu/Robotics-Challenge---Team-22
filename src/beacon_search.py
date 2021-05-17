@@ -63,6 +63,10 @@ class colour_search(object):
         self.get_colour = False
 
         self.colour = -1
+        
+        self.check = True 
+        
+        self.counter = 0
 
         self.ctrl_c = False
         rospy.on_shutdown(self.shutdown_ops)
@@ -269,6 +273,25 @@ class colour_search(object):
             # print("Yaw: {}".format(yaw))
             # print("Percentage Difference: {}".format(self.get_percentage_difference(bearing, yaw)))
             # print("Facing?: {}".format(self.check_facing_home(self.robot_odom.posy, self.robot_odom.posx, self.robot_odom.yaw)))
+            
+            """ 
+             [A , B , C] 
+             [1 , 2 , 3]
+             check which area its in
+            """
+            while self.check:
+                if self.robot_odom.posy > 1.960 and self.robot_odom.posy < 1.990:
+                    print('Position C')
+                    self.counter = 3
+                elif self.robot_odom.posy > 2.0600 and self.robot_odom.posy < 2.0680:
+                    print('Position B')
+                    self.counter = 2
+                else:
+                    print('Position A')
+                    self.counter = 1
+                
+                self.check = False        
+            
             self.turn(90)
             self.get_colour = True
             print("turn finished")
@@ -276,7 +299,7 @@ class colour_search(object):
             # self.finding_pillar = True
             # self.set_robot_turning(True)
             # self.find_target_pillar(90)
-
+            
             # #turn to check color
             # while self.turn:
             #     self.robot_controller.set_move_cmd(0.0, 0.3)
