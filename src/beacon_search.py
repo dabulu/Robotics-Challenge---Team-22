@@ -130,7 +130,7 @@ class colour_search(object):
             #[turquoise, red, green, yellow, magenta, blue]
             #[     0  ,   1 ,   2  ,   3   ,  4  ,    5   ]
             #CHANGE BACK TO SELF.COLOUR AFTER DEBUGGING
-            mask = colourMasks.getMask(hsv_img, 0)
+            mask = colourMasks.getMask(hsv_img, 1)
             #mask = cv2.inRange(hsv_img, lower, upper)
             res = cv2.bitwise_and(crop_img, crop_img, mask = mask)
 
@@ -168,8 +168,10 @@ class colour_search(object):
             #     break
 
             if self.m00 > self.m00_min:
+                print("detected")
                 # blob detected
                 if self.cy >= 560-100 and self.cy <= 560+100:
+                    print("centre")
                     if not self.pillar_lined_with_home:
                         self.move_towards_pillar()
                         self.complete = True
@@ -282,10 +284,10 @@ class colour_search(object):
              check which area its in
             """
             while self.check:
-                if self.robot_odom.posy > 1.960 and self.robot_odom.posy < 1.990:
+                if self.robot_odom.posy > 1.900 and self.robot_odom.posx > 2:
                     print('Position C')
                     self.area = "C"
-                elif self.robot_odom.posy > 2.0600 and self.robot_odom.posy < 2.0680:
+                elif self.robot_odom.posy > 2.0600 and self.robot_odom.posy < 2.080:
                     # print('Position B')
                     self.area = "B"
                 else:
@@ -345,6 +347,32 @@ class colour_search(object):
                 if self.complete:
                     break
                 self.find_target_pillar(140)
+            elif self.area == "C":
+                while self.robot_odom.posy >= 1.3:
+                    self.robot_controller.set_move_cmd(0.3, -0.05)
+                    self.robot_controller.publish()
+                    self.rate.sleep()
+                self.robot_controller.stop()
+                self.finding_pillar = True
+                self.set_robot_turning(True)
+                self.find_target_pillar(90)
+                if self.complete:
+                    break
+                self.find_target_pillar(25)
+                if self.complete:
+                    break
+                self.turn(115)
+                while self.robot_odom.posy >= -1:
+                    self.robot_controller.set_move_cmd(0.3, 0)
+                    self.robot_controller.publish()
+                self.turn(80, False)
+                while self.robot_odom.posx >= 0:
+                    self.robot_controller.set_move_cmd(0.3, 0)
+                    self.robot_controller.publish()
+                self.robot_controller.stop()
+                self.find_target_pillar(90)
+
+
 
             break
 

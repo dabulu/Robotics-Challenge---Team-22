@@ -14,7 +14,7 @@ turquoise_thresholds = [turquoise_lt, turquoise_ut]
 #--- red ---
 #red hue goes across axis so needs two masks and therefore two sets of thresholds
 red_lt1 = (0, 180, 100)
-red_ut1 = (10, 255, 255)
+red_ut1 = (15, 255, 255)
 red_thresholds1 = [red_lt1, red_ut1]
 red_lt2 = (170, 180, 100)
 red_ut2 = (180, 255, 255)
@@ -62,9 +62,9 @@ def getMask(img, colour):
     """
     if colour == 1:
         red_t = colour_thresholds[colour]
-        mask1 = cv2.inRange(img, red_t[0][0], red_t[0][1])
-        mask2 = cv2.inRange(img, red_t[1][0], red_t[1][1])
-        mask = mask1 + mask2
+        # mask1 = cv2.inRange(img, red_t[0][0], red_t[0][1])
+        mask = cv2.inRange(img, red_t[1][0], red_t[1][1])
+        # mask = mask1 + mask2
     else:
         if colour > 5 or colour < 0:
             print("Invalid colour integer, input 0 to 5")
