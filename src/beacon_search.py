@@ -167,10 +167,10 @@ class beacon_search(object):
             #     break
 
             if self.m00 > self.m00_min:
-                print("detected")
+                # print("detected")
                 # blob detected
                 if self.cy >= 560-100 and self.cy <= 560+100:
-                    print("centre")
+                    # print("centre")
                     if not self.pillar_lined_with_home:
                         self.move_towards_pillar()
                         self.complete = True

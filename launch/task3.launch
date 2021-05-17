@@ -1,0 +1,4 @@
+<launch>
+  <node name="beacon_node" pkg="team22" type="beacon_search.py" output="screen">
+  </node>
+</launch>

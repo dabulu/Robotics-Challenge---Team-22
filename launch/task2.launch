@@ -1,0 +1,3 @@
+<launch>
+  <node name="detection_node" pkg="team22" type="colour_search.py" output="screen">
+</launch>
