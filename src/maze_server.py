@@ -64,6 +64,32 @@ class SearchAS(object):
         # Angle of closest object
         self.lidar['closest angle']=raw_data.argmin()
 
+    def move_back(self):
+        self.robot_controller.set_move_cmd(linear=-0.2)
+        while self.lidar['range'] <= 0.2:
+            self.robot_controller.publish()
+        self.robot_controller.stop()
+
+    def avoid_wall(self):
+        self.robot_controller.stop()
+        if self.lidar['closest'] <= 0.1 and self.lidar['closest angle'] < 90:
+            while self.lidar['closest'] <= 0.1:
+                self.robot_controller.set_move_cmd(linear=-0.2, angular=0.4)
+                self.robot_controller.publish()
+        elif self.lidar['closest'] <= 0.1 and self.lidar['closest angle'] < 180:
+            while self.lidar['closest'] <= 0.1:
+                self.robot_controller.set_move_cmd(linear=0.2, angular=-0.4)
+                self.robot_controller.publish()
+        elif self.lidar['closest'] <= 0.1 and self.lidar['closest angle'] < 270:
+            while self.lidar['closest'] <= 0.1:
+                self.robot_controller.set_move_cmd(linear=0.2, angular=0.4)
+                self.robot_controller.publish()
+        elif self.lidar['closest'] <= 0.1 and self.lidar['closest angle'] < 360:
+            while self.lidar['closest'] <= 0.1:
+                self.robot_controller.set_move_cmd(linear=-0.2, angular=-0.4)
+                self.robot_controller.publish()
+        self.robot_controller.stop()
+
     def action_server_launcher(self, goal):
         r = rospy.Rate(10)
 
@@ -90,14 +116,15 @@ class SearchAS(object):
         start_y = self.robot_odom.posy
         distance_travelled = 0.0
 
-        # Starting Time
+        # Starting Time and Cancel Boolean
         StartTime = rospy.get_rostime()
+        self.cancel = False
 
-        while rospy.get_rostime().secs - StartTime.secs < 150:
+        while rospy.get_rostime().secs - StartTime.secs < 150 and self.cancel == False:
             # set the robot velocity:
             self.robot_controller.set_move_cmd(linear=goal.fwd_velocity)
 
-            while self.lidar['range'] > goal.approach_distance:
+            while self.lidar['range'] >= goal.approach_distance:
                 self.robot_controller.publish()
                 # check if there has been a request to cancel the action mid-way through:
                 if self.actionserver.is_preempt_requested():
@@ -106,6 +133,7 @@ class SearchAS(object):
                     # stop the robot:
                     self.robot_controller.stop()
                     success = False
+                    self.cancel = True
                     # exit the loop:
                     break
 
@@ -123,28 +151,67 @@ class SearchAS(object):
                 ref_y = self.robot_odom.posy
 
             self.robot_controller.stop()
+            self.avoid_wall()
 
+            previous_dir = 0.0
+            self.turn_again = True
 
-            # Turn right at most 90 degrees
-            self.robot_controller.set_move_cmd(angular=-0.6)
+            # Turn away from the closest obstacle at most 90 degrees
+            if self.lidar['closest angle'] > 180:
+                self.robot_controller.set_move_cmd(angular=0.6)
+                previous_dir = 0.6
+            elif self.lidar['closest angle'] <= 180:
+                self.robot_controller.set_move_cmd(angular=-0.6)
+                previous_dir = -0.6
+
             self.current_yaw = copy.deepcopy(self.robot_odom.yaw2)
-            while abs(self.current_yaw - self.robot_odom.yaw2) < pi/2:
-                if self.lidar['wider range'] > 0.5:
+            while abs(self.current_yaw - self.robot_odom.yaw2) < pi/1.8:
+                if self.lidar['wider range'] >= 0.5:
                     self.robot_controller.stop()
+                    self.turn_again = False
                     break
                 self.robot_controller.publish()
-            self.robot_controller.stop()
-
-
-            # Turn left at most 180 degrees
-            self.robot_controller.set_move_cmd(angular=0.6)
-            self.current_yaw = copy.deepcopy(self.robot_odom.yaw2)
-            while abs(self.current_yaw - self.robot_odom.yaw2) < pi*1.5:
-                if self.lidar['wider range'] > 0.5:
+                if self.actionserver.is_preempt_requested():
+                    rospy.loginfo('Cancelling the movement request.')
+                    self.actionserver.set_preempted()
+                    # stop the robot:
                     self.robot_controller.stop()
+                    success = False
+                    self.cancel = True
+                    self.turn_again = False
+                    # exit the loop:
+                    break
+            self.robot_controller.stop()
+            self.avoid_wall()
+
+
+            # Turn in the other direction until the robot sees a path
+            if previous_dir > 0.0:
+                self.robot_controller.set_move_cmd(angular=-0.6)
+            else:
+                self.robot_controller.set_move_cmd(angular=0.6)
+            self.current_yaw = copy.deepcopy(self.robot_odom.yaw2)
+            while self.turn_again == True:
+                if self.lidar['wider range'] >= 0.5:
+                    self.robot_controller.stop()
+                    self.turn_again = False
                     break
                 self.robot_controller.publish()
+                if self.actionserver.is_preempt_requested():
+                    rospy.loginfo('Cancelling the movement request.')
+                    self.actionserver.set_preempted()
+                    # stop the robot:
+                    self.robot_controller.stop()
+                    success = False
+                    self.cancel = True
+                    self.turn_again = False
+                    # exit the loop:
+                    break
+
             self.robot_controller.stop()
+            self.avoid_wall()
+
+            self.turn_again = True
 
         if success:
             rospy.loginfo('Motion finished successfully.')
