@@ -271,7 +271,7 @@ class beacon_search(object):
                     self.robot_controller.set_move_cmd(0.2, 0.0)
                     self.robot_controller.publish()
                     self.rate.sleep()
-                    print(abs(self.robot_odom.posy))
+                    # print(abs(self.robot_odom.posy))
                     if abs(self.robot_odom.posy) <= target:
                         self.robot_controller.stop()
                         straight = False
