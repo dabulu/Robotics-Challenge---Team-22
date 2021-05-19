@@ -90,3 +90,10 @@ def determineColour(img):
     for i in range(0,6):
         if checkMaskOutputWithColour(img, i):
             return i
+
+def foundColour(img):
+    colour = determineColour(img)
+    if colour == None:
+        return False
+    else:
+        return True
