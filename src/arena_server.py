@@ -48,23 +48,26 @@ class SearchAS(object):
 
         raw_data = np.array(lidar_data.ranges)
 
-        # Directly in front of object
+        # Arc size
         angle_tolerance = 12
+        # The closest obstacle in an arc directly in front of the robot
         self.lidar['range'] = min(min(raw_data[:angle_tolerance]),
                                min(raw_data[-angle_tolerance:]))
 
-        # Wider range in front of object
+        # Wider arc size
         wider_tolerance = 30
+        # The closest obstacle in a wider arc directly in front of the robot
         self.lidar['wider range'] = min(min(raw_data[:wider_tolerance]),
                                min(raw_data[-wider_tolerance:]))
 
-        # Closest object
+        # Closest object to any side of the robot
         self.lidar['closest'] = min(raw_data)
 
-        # Angle of closest object
+        # Angle of the closest object to any side of the robot
         self.lidar['closest angle']=raw_data.argmin()
 
     def move_back(self):
+        # Back up from a wall if it's too close
         self.robot_controller.set_move_cmd(linear=-0.2)
         while self.lidar['range'] <= 0.2:
             self.robot_controller.publish()
@@ -72,6 +75,8 @@ class SearchAS(object):
 
     def avoid_wall(self):
         self.robot_controller.stop()
+
+        # Turn away from a close wall until it's not longer close
         if self.lidar['closest'] <= 0.1 and self.lidar['closest angle'] < 90:
             while self.lidar['closest'] <= 0.1:
                 self.robot_controller.set_move_cmd(linear=-0.2, angular=0.4)
@@ -94,6 +99,8 @@ class SearchAS(object):
         r = rospy.Rate(10)
 
         success = True
+
+        # Checking if set robot speed and obstacle stopping distance is appropriate
         if goal.fwd_velocity <= 0 or goal.fwd_velocity > 0.26:
             print("Invalid fwd_velocity {:.2f}: 0 < fwd_velocity < 0.26".format(goal.fwd_velocity))
             success = False
@@ -120,10 +127,12 @@ class SearchAS(object):
         StartTime = rospy.get_rostime()
         self.cancel = False
 
+        # Main Navigation Loop
         while rospy.get_rostime().secs - StartTime.secs < 150 and self.cancel == False:
             # set the robot velocity:
             self.robot_controller.set_move_cmd(linear=goal.fwd_velocity)
 
+            # Move forward while there is not an obstacle in front of the robot
             while self.lidar['range'] >= goal.approach_distance:
                 self.robot_controller.publish()
                 # check if there has been a request to cancel the action mid-way through:
@@ -151,12 +160,13 @@ class SearchAS(object):
                 ref_y = self.robot_odom.posy
 
             self.robot_controller.stop()
+            # Periodic checking to see whether it's near a wall
             self.avoid_wall()
 
             previous_dir = 0.0
             self.turn_again = True
 
-            # Turn away from the closest obstacle at most 90 degrees
+            # Set initial robot direction based on where the closest obstacle is
             if self.lidar['closest angle'] > 180:
                 self.robot_controller.set_move_cmd(angular=0.6)
                 previous_dir = 0.6
@@ -164,6 +174,7 @@ class SearchAS(object):
                 self.robot_controller.set_move_cmd(angular=-0.6)
                 previous_dir = -0.6
 
+            # Turn away from the closest obstacle at most just above 90 degrees
             self.current_yaw = copy.deepcopy(self.robot_odom.yaw2)
             while abs(self.current_yaw - self.robot_odom.yaw2) < pi/1.8:
                 if self.lidar['wider range'] >= 0.5:
@@ -181,9 +192,10 @@ class SearchAS(object):
                     self.turn_again = False
                     # exit the loop:
                     break
-            self.robot_controller.stop()
-            self.avoid_wall()
 
+            self.robot_controller.stop()
+            # Periodic checking to see whether it's near a wall
+            self.avoid_wall()
 
             # Turn in the other direction until the robot sees a path
             if previous_dir > 0.0:
@@ -209,6 +221,7 @@ class SearchAS(object):
                     break
 
             self.robot_controller.stop()
+            # Periodic checking to see whether it's near a wall
             self.avoid_wall()
 
             self.turn_again = True
