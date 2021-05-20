@@ -166,7 +166,7 @@ class SearchAS(object):
             previous_dir = 0.0
             self.turn_again = True
 
-            # Turn away from the closest obstacle at most 90 degrees
+            # Setting speed to turn away from the closest obstacle
             if self.lidar['closest angle'] > 180:
                 self.robot_controller.set_move_cmd(angular=0.6)
                 previous_dir = 0.6
