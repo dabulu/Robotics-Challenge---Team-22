@@ -77,20 +77,20 @@ class SearchAS(object):
         self.robot_controller.stop()
 
         # Turn away from a close wall until it's not longer close
-        if self.lidar['closest'] <= 0.1 and self.lidar['closest angle'] < 90:
-            while self.lidar['closest'] <= 0.1:
+        if self.lidar['closest'] <= 0.15 and self.lidar['closest angle'] < 90:
+            while self.lidar['closest'] <= 0.15:
                 self.robot_controller.set_move_cmd(linear=-0.2, angular=0.4)
                 self.robot_controller.publish()
-        elif self.lidar['closest'] <= 0.1 and self.lidar['closest angle'] < 180:
-            while self.lidar['closest'] <= 0.1:
+        elif self.lidar['closest'] <= 0.15 and self.lidar['closest angle'] < 180:
+            while self.lidar['closest'] <= 0.15:
                 self.robot_controller.set_move_cmd(linear=0.2, angular=-0.4)
                 self.robot_controller.publish()
-        elif self.lidar['closest'] <= 0.1 and self.lidar['closest angle'] < 270:
-            while self.lidar['closest'] <= 0.1:
+        elif self.lidar['closest'] <= 0.15 and self.lidar['closest angle'] < 270:
+            while self.lidar['closest'] <= 0.15:
                 self.robot_controller.set_move_cmd(linear=0.2, angular=0.4)
                 self.robot_controller.publish()
-        elif self.lidar['closest'] <= 0.1 and self.lidar['closest angle'] < 360:
-            while self.lidar['closest'] <= 0.1:
+        elif self.lidar['closest'] <= 0.15 and self.lidar['closest angle'] < 360:
+            while self.lidar['closest'] <= 0.15:
                 self.robot_controller.set_move_cmd(linear=-0.2, angular=-0.4)
                 self.robot_controller.publish()
         self.robot_controller.stop()
@@ -128,7 +128,7 @@ class SearchAS(object):
         self.cancel = False
 
         # Main Navigation Loop
-        while rospy.get_rostime().secs - StartTime.secs < 150 and self.cancel == False:
+        while rospy.get_rostime().secs - StartTime.secs < 210 and self.cancel == False:
             # set the robot velocity:
             self.robot_controller.set_move_cmd(linear=goal.fwd_velocity)
 
@@ -166,7 +166,7 @@ class SearchAS(object):
             previous_dir = 0.0
             self.turn_again = True
 
-            # Set initial robot direction based on where the closest obstacle is
+            # Turn away from the closest obstacle at most 90 degrees
             if self.lidar['closest angle'] > 180:
                 self.robot_controller.set_move_cmd(angular=0.6)
                 previous_dir = 0.6
@@ -192,10 +192,10 @@ class SearchAS(object):
                     self.turn_again = False
                     # exit the loop:
                     break
-
             self.robot_controller.stop()
             # Periodic checking to see whether it's near a wall
             self.avoid_wall()
+
 
             # Turn in the other direction until the robot sees a path
             if previous_dir > 0.0:
