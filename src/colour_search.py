@@ -86,6 +86,8 @@ class colour_search(object):
 
         crop_img = cv_img[crop_y:crop_y+crop_height, crop_x:crop_x+crop_width]
         hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
+        print(colourMasks.determineColour(hsv_img))
+        print(colourMasks.foundColour(hsv_img))
 
         if self.get_colour:
             self.colour = colourMasks.determineColour(hsv_img)
@@ -163,59 +165,59 @@ class colour_search(object):
         while not self.ctrl_c:
 
             # pass time for data to catch up from odom
-            for i in range (0,5):
-                self.rate.sleep()
-
+            # for i in range (0,5):
+            #     self.rate.sleep()
+            #
             self.start_posy = self.robot_odom.posy
-
-            #turn to check color
-            while self.turn:
-                self.robot_controller.set_move_cmd(0.0, 0.3)
-                self.robot_controller.publish()
-                self.rate.sleep()
-                if abs(self.robot_odom.posy) > 1.0493:
-                    self.turn = False
-                    self.get_colour = True
-
-            #turn back to initial position
-            while self.turn_back:
-                self.robot_controller.set_move_cmd(0.0, -0.3)
-                self.robot_controller.publish()
-                self.rate.sleep()
-                if abs(self.robot_odom.posy) < 1.0425:
-                    self.turn_back = False
-
-            #move to X
-            while self.move_forward:
-                self.robot_controller.set_move_cmd(0.2, 0.0)
-                self.robot_controller.publish()
-                self.rate.sleep()
-                # print(self.start_posy - self.robot_odom.posy)
-                if abs(self.start_posy - self.robot_odom.posy) > 1:
-                    self.move_forward = False
-                    self.finding_pillar = True
-
-
-
-            self.robot_controller.stop()
-
-            #set robot to turn right
-            # print("Turning RIGHT!")
-            self.set_robot_turning(True)
-            #try to find pillar turning right
-            self.find_target_pillar(90)
-            #otherwise turn left if not finished
-            while not self.complete:
-                # print("Turning LEFT!")
-                self.set_robot_turning(False)
-                self.find_target_pillar(200)
-                # print("Turning RIGHT!")
-                self.set_robot_turning(True)
-                self.find_target_pillar(180)
-
-            if self.complete:
-                print("SEARCH COMPLETE: The robot is now facing the target pillar.")
-                break
+            #
+            # #turn to check color
+            # while self.turn:
+            #     self.robot_controller.set_move_cmd(0.0, 0.3)
+            #     self.robot_controller.publish()
+            #     self.rate.sleep()
+            #     if abs(self.robot_odom.posy) > 1.0493:
+            #         self.turn = False
+            #         self.get_colour = True
+            #
+            # #turn back to initial position
+            # while self.turn_back:
+            #     self.robot_controller.set_move_cmd(0.0, -0.3)
+            #     self.robot_controller.publish()
+            #     self.rate.sleep()
+            #     if abs(self.robot_odom.posy) < 1.0425:
+            #         self.turn_back = False
+            #
+            # #move to X
+            # while self.move_forward:
+            #     self.robot_controller.set_move_cmd(0.2, 0.0)
+            #     self.robot_controller.publish()
+            #     self.rate.sleep()
+            #     # print(self.start_posy - self.robot_odom.posy)
+            #     if abs(self.start_posy - self.robot_odom.posy) > 1:
+            #         self.move_forward = False
+            #         self.finding_pillar = True
+            #
+            #
+            #
+            # self.robot_controller.stop()
+            #
+            # #set robot to turn right
+            # # print("Turning RIGHT!")
+            # self.set_robot_turning(True)
+            # #try to find pillar turning right
+            # self.find_target_pillar(90)
+            # #otherwise turn left if not finished
+            # while not self.complete:
+            #     # print("Turning LEFT!")
+            #     self.set_robot_turning(False)
+            #     self.find_target_pillar(200)
+            #     # print("Turning RIGHT!")
+            #     self.set_robot_turning(True)
+            #     self.find_target_pillar(180)
+            #
+            # if self.complete:
+            #     print("SEARCH COMPLETE: The robot is now facing the target pillar.")
+            #     break
 
 if __name__ == '__main__':
     search_ob = colour_search()

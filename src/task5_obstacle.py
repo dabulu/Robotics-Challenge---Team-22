@@ -207,50 +207,27 @@ class beacon_search(object):
             self.turn_vel_slow = 0.15
             self.turn_vel_fast = 0.5
 
-    def find_target_pillar(self, target):
-
-        # get reference point for start of turn
-        self.start_yaw = self.robot_odom.yaw
-        # print("Start yaw: {}".format(self.start_yaw))
-        # set var to stop turn when complete
-        turn_complete = False
-        # stop robot before turn for accurate data
-        self.robot_controller.stop()
-
-        while not turn_complete:
-            if self.m00 > self.m00_min:
-            # print("detected")
+    def find_target_pillar(self):
+        if self.m00 > self.m00_min:
             # blob detected
-                if self.cy >= 560-100 and self.cy <= 560+100:
-                # print("centre")
-                    if not self.pillar_lined_with_home:
-                        self.move_towards_pillar()
-                        self.complete = True
-                        self.robot_controller.stop()
-                        break
-                    if not self.check_facing_home(self.robot_odom.posy, self.robot_odom.posx, self.robot_odom.yaw):
-                        #     # if self.move_rate == 'slow':
-                        self.move_towards_pillar()
-                        self.complete = True
-                        self.robot_controller.stop()
-                        break
-                    else:
-                        if not self.check_facing_home(self.robot_odom.posy, self.robot_odom.posx, self.robot_odom.yaw):
-                            # self.move_rate = 'slow'
-                            self.robot_controller.set_move_cmd(0.0, self.turn_vel_slow)
-                        else:
-                            # self.move_rate = 'fast'
-                            self.robot_controller.set_move_cmd(0.0, self.turn_vel_fast)
-
-                if abs(self.robot_odom.yaw - self.start_yaw) >= target:
-                    self.robot_controller.stop()
-                    turn_complete = True
-
-                # print("Yaw: {}".format(self.robot_odom.yaw))
-
+            if self.cy >= 560-100 and self.cy <= 560+100:
+                #blob is centred, move forward
+                self.move_towards_pillar()
+                self.complete = True
+                self.robot_controller.stop()
+                return True
+            elif self.cy < 460:
+                #turn left, blob is to the left
+                self.robot_controller.set_move_cmd(0.0, 0.2)
                 self.robot_controller.publish()
-                self.rate.sleep()
-                # print("Finished loop")
+                return True
+            elif self.cy > 660:
+                #turn right, blob is to the right
+                self.robot_controller.set_move_cmd(0.0, -0.2)
+                self.robot_controller.publish()
+                return True
+        else:
+            return False
 
     def get_bearing(self, a1, a2, b1 , b2):
         if (a1 == b1 and a2 == b2):
