@@ -143,6 +143,7 @@ class beacon_search(object):
         crop_y = int((height/2) - (crop_height/2))
 
         crop_img = cv_img[crop_y:crop_y+crop_height, crop_x:crop_x+crop_width]
+        global hsv_img 
         hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
 
         if self.get_colour:
@@ -259,6 +260,11 @@ class beacon_search(object):
         else:
             return False
 
+    def beaconing_area(self):
+        if colourMasks.foundColour(hsv_img):
+            if not self.check_facing_home(self.robot_odom.posy, self.robot_odom.posx, self.robot_odom.yaw):
+                print("okay") 
+        
     def get_yaw_as_bearing(self, yaw):
         if yaw < 0:
             return yaw + 360
@@ -316,10 +322,15 @@ class beacon_search(object):
                         straight = False
 
     def action_server_launcher(self, goal):
+       
         r = rospy.Rate(10)
 
         success = True
 
+        self.turn(90)
+        self.get_colour = True
+        self.turn(90, False)
+        
         # Checking if set robot speed and obstacle stopping distance is appropriate
         if goal.fwd_velocity <= 0 or goal.fwd_velocity > 0.26:
             print("Invalid fwd_velocity {:.2f}: 0 < fwd_velocity < 0.26".format(goal.fwd_velocity))
