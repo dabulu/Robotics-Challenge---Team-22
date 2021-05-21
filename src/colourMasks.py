@@ -13,13 +13,13 @@ turquoise_thresholds = [turquoise_lt, turquoise_ut]
 
 #--- red ---
 #red hue goes across axis so needs two masks and therefore two sets of thresholds
-red_lt1 = (0, 180, 100)
-red_ut1 = (15, 255, 255)
-red_thresholds1 = [red_lt1, red_ut1]
-red_lt2 = (170, 180, 100)
-red_ut2 = (180, 255, 255)
-red_thresholds2 = [red_lt2, red_ut2]
-red_thresholds = [red_thresholds1, red_thresholds2]
+red_lt = (0.5, 170, 100)
+red_ut = (-0.5, 255, 255)
+# red_thresholds1 = [red_lt1, red_ut1]
+# red_lt2 = (170, 180, 100)
+# red_ut2 = (180, 255, 255)
+# red_thresholds2 = [red_lt2, red_ut2]
+red_thresholds = [red_lt, red_ut]
 
 #--- green ---
 green_lt = (55, 120, 100)
@@ -60,15 +60,10 @@ def getMask(img, colour):
     [turquoise, red, green, yellow, purple, blue]
     [ 0  ,  1 ,   2  ,   3   ,  4  ,    5   ]
     """
-    if colour == 1:
-        red_t = colour_thresholds[colour]
-        # mask1 = cv2.inRange(img, red_t[0][0], red_t[0][1])
-        mask = cv2.inRange(img, red_t[1][0], red_t[1][1])
-        # mask = mask1 + mask2
-    else:
-        if colour > 5 or colour < 0:
-            print("Invalid colour integer, input 0 to 5")
-        mask = cv2.inRange(img, colour_thresholds[colour][0], colour_thresholds[colour][1])
+    if colour > 5 or colour < 0:
+        print("Invalid colour integer, input 0 to 5")
+        return
+    mask = cv2.inRange(img, colour_thresholds[colour][0], colour_thresholds[colour][1])
     return mask
 
 def getAllMasks(img):
@@ -78,10 +73,11 @@ def getAllMasks(img):
     mask4 = getMask(img, 3)
     mask5 = getMask(img, 4)
     mask6 = getMask(img, 5)
-    maska = cv2.bitwise_or(mask3, mask2)
-    # maskb = cv2.bitwise_or(mask4, mask5, mask6)
-    # return cv2.bitwise_or(maska, maskb)
-    return maska
+    maska = cv2.bitwise_or(mask1, mask2)
+    maskb = cv2.bitwise_or(mask3, mask4)
+    maskc = cv2.bitwise_or(mask5, mask6)
+    maskd = cv2.bitwise_or(maska, maskb)
+    return cv2.bitwise_or(maskc, maskd)
 
 def checkMaskOutputWithColour(img, colour):
     """
