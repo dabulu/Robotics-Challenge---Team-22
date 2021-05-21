@@ -12,6 +12,16 @@ from sensor_msgs.msg import LaserScan
 # Import some other modules from within this package (copied from other package)
 from move_tb3 import MoveTB3
 from tb3_odometry import TB3Odometry
+# Import all the necessary ROS message types:
+from sensor_msgs.msg import Image
+import cv2
+
+# Import some other modules from within this package
+from sensor_msgs.msg import LaserScan
+from cv_bridge import CvBridge
+
+import colourMasks
+import math
 
 # Import some other useful Python Modules
 from math import radians, pi
@@ -25,23 +35,76 @@ class SearchAS(object):
     result = SearchResult()
 
     def __init__(self):
-        # Initialise action server
-        self.actionserver = actionlib.SimpleActionServer("/arena_action_server",
-            SearchAction, self.action_server_launcher, auto_start=False)
+        # arena_server.py
+        self.actionserver = actionlib.SimpleActionServer("/arena_action_server", SearchAction, self.action_server_launcher, auto_start=False)
         self.actionserver.start()
 
         # Lidar subscriber
         self.lidar_subscriber = rospy.Subscriber('/scan', LaserScan, self.callback_lidar)
+        self.camera_subscriber = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
         self.lidar = {'range': 0.0,
-                      'wider range': 0.0,
-                      'closest': 0.0,
-                      'closest angle': 0}
+        'wider range': 0.0,
+        'closest': 0.0,
+        'closest angle': 0}
 
         # Robot movement and odometry
         self.robot_controller = MoveTB3()
         self.robot_odom = TB3Odometry()
 
         self.current_yaw = 0.0
+
+        # beacon_search
+
+        self.cvbridge_interface = CvBridge()
+        self.turn_vel_fast = -0.5
+        self.turn_vel_slow = -0.1
+        self.robot_controller.set_move_cmd(0.0, self.turn_vel_fast)
+
+        self.move_rate = '' # fast, slow or stop
+        self.stop_counter = 0
+        self.start_yaw = 0.0
+        self.start_posy = 0.0
+        self.start_posx = 0.0
+
+        #var to check task is complete
+        self.complete = False
+        #var to check if move forward is needed
+        self.move_forward = True
+        #var to turn to check the color
+        # self.turn = True
+        #var to turn back facing the front
+        self.turn_back = True
+        #var to check if statr yaw has been initiated
+        self.face_turn = False
+
+        self.pillar_lined_with_home = False
+
+        self.finding_pillar = False
+
+        self.get_colour = False
+
+        self.colour = -1
+
+        self.check = True
+
+        self.counter = 0
+
+        self.ctrl_c = False
+        rospy.on_shutdown(self.shutdown_ops)
+
+        self.rate = rospy.Rate(5)
+
+        self.area = 0
+
+        self.m00 = 0
+        self.m00_min = 10000
+
+        self.finished_initialising = False
+
+    def shutdown_ops(self):
+        self.robot_controller.stop()
+        cv2.destroyAllWindows()
+        self.ctrl_c = True
 
     def callback_lidar(self, lidar_data):
         """Returns arrays of lidar data"""
@@ -65,6 +128,47 @@ class SearchAS(object):
 
         # Angle of the closest object to any side of the robot
         self.lidar['closest angle']=raw_data.argmin()
+
+    def camera_callback(self, img_data):
+        try:
+            cv_img = self.cvbridge_interface.imgmsg_to_cv2(img_data, desired_encoding="bgr8")
+        except CvBridgeError as e:
+            print(e)
+
+        height, width, channels = cv_img.shape
+
+        crop_width = width - 800
+        crop_height = 160
+        crop_x = int((width/2) - (crop_width/2))
+        crop_y = int((height/2) - (crop_height/2))
+
+        crop_img = cv_img[crop_y:crop_y+crop_height, crop_x:crop_x+crop_width]
+        global hsv_img
+        hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
+
+        if self.get_colour:
+            self.colour = colourMasks.determineColour(hsv_img)
+            print("SEARCH INITIATED: The target colour is {}.".format(colourMasks.getColour(self.colour)))
+            # print(self.colour)
+            self.get_colour = False
+
+        if self.finding_pillar:
+            #[turquoise, red, green, yellow, magenta, blue]
+            #[     0  ,   1 ,   2  ,   3   ,  4  ,    5   ]
+            mask = colourMasks.getMask(hsv_img, self.colour)
+
+            #mask = cv2.inRange(hsv_img, lower, upper)
+            res = cv2.bitwise_and(crop_img, crop_img, mask = mask)
+
+            m = cv2.moments(mask)
+            self.m00 = m['m00']
+            self.cy = m['m10'] / (m['m00'] + 1e-5)
+
+            if self.m00 > self.m00_min:
+                cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 4)
+
+        # cv2.imshow('cropped image', crop_img)
+        cv2.waitKey(1)
 
     def move_back(self):
         # Back up from a wall if it's too close
@@ -94,6 +198,92 @@ class SearchAS(object):
                 self.robot_controller.set_move_cmd(linear=-0.2, angular=-0.4)
                 self.robot_controller.publish()
         self.robot_controller.stop()
+
+    def set_robot_turning(self, turning_right):
+        if turning_right:
+            self.turn_vel_slow = -0.15
+            self.turn_vel_fast =  -0.5
+        else:
+            self.turn_vel_slow = 0.15
+            self.turn_vel_fast = 0.5
+
+    def find_target_pillar(self):
+        if self.m00 > self.m00_min:
+            # blob detected
+            if self.cy >= 560-100 and self.cy <= 560+100:
+                #blob is centred, move forward
+                self.move_towards_pillar()
+                self.complete = True
+                self.robot_controller.stop()
+                return True
+            elif self.cy < 460:
+                #turn left, blob is to the left
+                self.robot_controller.set_move_cmd(0.0, 0.2)
+                self.robot_controller.publish()
+                return True
+            elif self.cy > 660:
+                #turn right, blob is to the right
+                self.robot_controller.set_move_cmd(0.0, -0.2)
+                self.robot_controller.publish()
+                return True
+        else:
+            return False
+
+    def get_bearing(self, a1, a2, b1 , b2):
+        if (a1 == b1 and a2 == b2):
+            return False
+            theta = math.atan2(b1 - a1, b2 - a2)
+        if (theta < 0.0):
+            return math.degrees(theta + 2*math.pi)
+            return math.degrees(theta)
+
+    def get_percentage_difference(self, a, b):
+        if a > b:
+            if a == 0:
+                return 0
+                return ((a-b)/a)*100
+            elif b > a:
+                return ((b-a)/b)*100
+            else:
+                return 0
+
+    def check_facing_home(self, posy, posx, yaw):
+        original_posy, original_posx = self. start_posy, self.start_posx
+        bearing = self.get_bearing(posy, posx, original_posy, original_posx)
+        yaw = self.get_yaw_as_bearing(yaw)
+        # print("Bearing: {}".format(points_bearing))
+        pd = self.get_percentage_difference(bearing, yaw)
+        # print("Percentage Difference: {}".format(pd))
+        if pd <= 12.5:
+            return True
+        else:
+            return False
+
+    def beaconing_area(self):
+        if colourMasks.foundColour(hsv_img):
+            if not self.check_facing_home(self.robot_odom.posy, self.robot_odom.posx, self.robot_odom.yaw):
+                return True
+        else:
+            return False
+
+    def get_yaw_as_bearing(self, yaw):
+        if yaw < 0:
+            return yaw + 360
+        else:
+            return yaw
+
+    def move_towards_pillar(self):
+        print("BEACON DETECTED: Beaconing initiated.")
+        while not self.complete:
+            self.robot_controller.set_move_cmd(0.3, 0)
+            # print(self.lidar['range'])
+            if self.lidar['range'] <= 0.25:
+                self.robot_controller.stop()
+                print("BEACONING COMPLETE: The robot has now stopped.")
+                self.complete = True
+                break
+                self.robot_controller.publish()
+                self.rate.sleep()
 
     def action_server_launcher(self, goal):
         r = rospy.Rate(10)
