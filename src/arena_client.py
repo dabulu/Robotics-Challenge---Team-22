@@ -52,7 +52,7 @@ class search_client:
         self.send_goal(velocity=0.2, distance=0.45)
 
         while self.client.get_state() < 2:
-            print("STATE: Current state code is {}".format(self.client.get_state()))
+            # print("STATE: Current state code is {}".format(self.client.get_state()))
 
             self.rate.sleep()
 

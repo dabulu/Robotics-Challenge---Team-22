@@ -239,17 +239,17 @@ class SearchAS(object):
         theta = math.atan2(b1 - a1, b2 - a2)
         if (theta < 0.0):
             return math.degrees(theta + 2*math.pi)
-            return math.degrees(theta)
+        return math.degrees(theta)
 
     def get_percentage_difference(self, a, b):
         if a > b:
             if a == 0:
                 return 0
-                return ((a-b)/a)*100
-            elif b > a:
-                return ((b-a)/b)*100
-            else:
-                return 0
+            return ((a-b)/a)*100
+        elif b > a:
+            return ((b-a)/b)*100
+        else:
+            return 0
 
     def check_facing_home(self, posy, posx, yaw):
         original_posy, original_posx = self. start_posy, self.start_posx
@@ -291,6 +291,21 @@ class SearchAS(object):
                 self.robot_controller.publish()
                 self.rate.sleep()
 
+    def turn(self, target, right = True):
+        ref_yaw = self.get_yaw_as_bearing(self.robot_odom.yaw)
+        turning = True
+        if right:
+            turn_speed = 0.3
+        else:
+            turn_speed = -0.3
+        while turning:
+            self.robot_controller.set_move_cmd(0, turn_speed)
+            self.robot_controller.publish()
+            self.rate.sleep()
+            if abs(ref_yaw - self.get_yaw_as_bearing(self.robot_odom.yaw)) >= target:
+                self.robot_controller.stop()
+                turning = False
+
     def action_server_launcher(self, goal):
         r = rospy.Rate(10)
 
@@ -324,6 +339,10 @@ class SearchAS(object):
         self.cancel = False
         counter = 0
         inside_area = False
+
+        self.turn(90, False)
+        self.get_colour = True
+        self.turn(90)
 
         # Main Navigation Loop
         while rospy.get_rostime().secs - StartTime.secs < 210 and self.cancel == False:
