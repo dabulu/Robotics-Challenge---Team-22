@@ -75,7 +75,7 @@ class beacon_search(object):
 
         self.rate = rospy.Rate(5)
 
-        self.area = 0
+        self.all_colours = True
 
         self.m00 = 0
         self.m00_min = 10000
@@ -132,18 +132,22 @@ class beacon_search(object):
         if self.finding_pillar:
             #[turquoise, red, green, yellow, magenta, blue]
             #[     0  ,   1 ,   2  ,   3   ,  4  ,    5   ]
-            mask = colourMasks.getMask(hsv_img, self.colour)
+            if self.all_colours:
+                mask = colourMasks.getAllMasks(hsv_img)
+            else:
+                mask = colourMasks.getMask(hsv_img, self.colour)
             #mask = cv2.inRange(hsv_img, lower, upper)
             res = cv2.bitwise_and(crop_img, crop_img, mask = mask)
 
             m = cv2.moments(mask)
             self.m00 = m['m00']
             self.cy = m['m10'] / (m['m00'] + 1e-5)
+            print(self.cy)
 
             if self.m00 > self.m00_min:
                 cv2.circle(crop_img, (int(self.cy), 200), 10, (0, 0, 255), 4)
 
-        # cv2.imshow('cropped image', crop_img)
+        cv2.imshow('cropped image', crop_img)
         cv2.waitKey(1)
 
     def set_robot_turning(self, turning_right):
@@ -332,7 +336,7 @@ class beacon_search(object):
             #     self.forwards(1.450, "y")
             #     self.turn(80, False)
             #     self.forwards(0.200, "x")
-            #     self.finding_pillar = True
+            self.finding_pillar = True
             #     self.find_target_pillar(30)
             #     if self.complete:
             #         break

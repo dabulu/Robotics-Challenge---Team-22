@@ -71,6 +71,18 @@ def getMask(img, colour):
         mask = cv2.inRange(img, colour_thresholds[colour][0], colour_thresholds[colour][1])
     return mask
 
+def getAllMasks(img):
+    mask1 = getMask(img, 0)
+    mask2 = getMask(img, 1)
+    mask3 = getMask(img, 2)
+    mask4 = getMask(img, 3)
+    mask5 = getMask(img, 4)
+    mask6 = getMask(img, 5)
+    maska = cv2.bitwise_or(mask3, mask2)
+    # maskb = cv2.bitwise_or(mask4, mask5, mask6)
+    # return cv2.bitwise_or(maska, maskb)
+    return maska
+
 def checkMaskOutputWithColour(img, colour):
     """
     Check that a mask has an effect on the input image using colour input

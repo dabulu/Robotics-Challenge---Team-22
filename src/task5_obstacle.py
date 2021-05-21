@@ -94,7 +94,7 @@ class beacon_search(object):
 
         self.rate = rospy.Rate(5)
 
-        self.area = 0
+        self.all_colours = True
 
         self.m00 = 0
         self.m00_min = 10000
@@ -154,7 +154,10 @@ class beacon_search(object):
         if self.finding_pillar:
             #[turquoise, red, green, yellow, magenta, blue]
             #[     0  ,   1 ,   2  ,   3   ,  4  ,    5   ]
-            mask = colourMasks.getMask(hsv_img, self.colour)
+            if self.all_colours:
+                mask = colourMasks.getAllMasks(hsv_img)
+            else:
+                mask = colourMasks.getMask(hsv_img, self.colour)
 
             #mask = cv2.inRange(hsv_img, lower, upper)
             res = cv2.bitwise_and(crop_img, crop_img, mask = mask)
@@ -264,6 +267,8 @@ class beacon_search(object):
         if colourMasks.foundColour(hsv_img):
             if not self.check_facing_home(self.robot_odom.posy, self.robot_odom.posx, self.robot_odom.yaw):
                 return True
+            else:
+                return False
         else:
             return False
 
