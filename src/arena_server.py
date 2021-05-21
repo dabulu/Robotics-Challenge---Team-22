@@ -236,7 +236,7 @@ class SearchAS(object):
     def get_bearing(self, a1, a2, b1 , b2):
         if (a1 == b1 and a2 == b2):
             return False
-            theta = math.atan2(b1 - a1, b2 - a2)
+        theta = math.atan2(b1 - a1, b2 - a2)
         if (theta < 0.0):
             return math.degrees(theta + 2*math.pi)
             return math.degrees(theta)
