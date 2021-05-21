@@ -79,6 +79,7 @@ class beacon_search(object):
 
         self.m00 = 0
         self.m00_min = 10000
+        # self.img = None
 
         self.finished_initialising = False
 
@@ -118,7 +119,9 @@ class beacon_search(object):
         crop_y = int((height/2) - (crop_height/2))
 
         crop_img = cv_img[crop_y:crop_y+crop_height, crop_x:crop_x+crop_width]
+        global hsv_img
         hsv_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2HSV)
+        # self.img = hsv_img
 
         if self.get_colour:
             self.colour = colourMasks.determineColour(hsv_img)
@@ -216,7 +219,7 @@ class beacon_search(object):
             return 0
 
     def check_facing_home(self, posy, posx, yaw):
-        original_posy, original_posx = self. start_posy, self.start_posx
+        original_posy, original_posx = self.start_posy, self.start_posx
         bearing = self.get_bearing(posy, posx, original_posy, original_posx)
         yaw = self.get_yaw_as_bearing(yaw)
         # print("Bearing: {}".format(points_bearing))
@@ -281,142 +284,158 @@ class beacon_search(object):
                         self.robot_controller.stop()
                         straight = False
 
+    def beaconing_area(self):
+        if colourMasks.foundColour(hsv_img):
+            h = self.check_facing_home(self.robot_odom.posy, self.robot_odom.posx, self.robot_odom.yaw)
+            print("facing home: {}".format(h))
+            if not h:
+                return True
+            else:
+                return False
+        else:
+            return False
+
     def main(self):
         while not self.ctrl_c:
 
-            # pass time for data to catch up from odom
+
+            # # pass time for data to catch up from odom
             for i in range (0,5):
                 self.rate.sleep()
-
-            """
-             [A , B , C]
-             [1 , 2 , 3]
-             check which area its in
-            """
-            while self.check:
-                if self.robot_odom.posy > 1.900 and self.robot_odom.posx > 2:
-                    # print('Position C')
-                    self.area = "C"
-                elif self.robot_odom.posy > 2.0600 and self.robot_odom.posy < 2.080:
-                    # print('Position B')
-                    self.area = "B"
-                else:
-                    # print('Position A')
-                    self.area = "A"
-
-                self.check = False
+            #
+            # """
+            #  [A , B , C]
+            #  [1 , 2 , 3]
+            #  check which area its in
+            # """
+            # while self.check:
+            #     if self.robot_odom.posy > 1.900 and self.robot_odom.posx > 2:
+            #         # print('Position C')
+            #         self.area = "C"
+            #     elif self.robot_odom.posy > 2.0600 and self.robot_odom.posy < 2.080:
+            #         # print('Position B')
+            #         self.area = "B"
+            #     else:
+            #         # print('Position A')
+            #         self.area = "A"
+            #
+            #     self.check = False
 
             self.start_posy = self.robot_odom.posy
             self.start_posx = self.robot_odom.posx
 
-            self.turn(90)
-            self.get_colour = True
-            self.turn(90, False)
-
-            if self.area == "A":
-                self.forwards(1.450, "y")
-                self.turn(80, False)
-                self.forwards(0.200, "x")
-                self.finding_pillar = True
-                self.find_target_pillar(30)
-                if self.complete:
-                    break
-                self.set_robot_turning(False)
-                self.find_target_pillar(180)
-                self.find_target_pillar(15)
-                if self.complete:
-                    break
-                self.turn(151, False)
-                while self.robot_odom.posx <= 1.600:
-                    self.robot_controller.set_move_cmd(0.2, 0.0)
-                    self.robot_controller.publish()
+            # self.turn(90)
+            # self.get_colour = True
+            # self.turn(90, False)
+            #
+            # if self.area == "A":
+            #     self.forwards(1.450, "y")
+            #     self.turn(80, False)
+            #     self.forwards(0.200, "x")
+            #     self.finding_pillar = True
+            #     self.find_target_pillar(30)
+            #     if self.complete:
+            #         break
+            #     self.set_robot_turning(False)
+            #     self.find_target_pillar(180)
+            #     self.find_target_pillar(15)
+            #     if self.complete:
+            #         break
+            #     self.turn(151, False)
+            #     while self.robot_odom.posx <= 1.600:
+            #         self.robot_controller.set_move_cmd(0.2, 0.0)
+            #         self.robot_controller.publish()
+            #         self.rate.sleep()
+            #     self.turn(78)
+            #     while self.robot_odom.posy <= 1.1631:
+            #         self.robot_controller.set_move_cmd(0.2, 0.0)
+            #         self.robot_controller.publish()
+            #         self.rate.sleep()
+            #     self.pillar_lined_with_home = True
+            #     self.find_target_pillar(90)
+            #     if self.complete:
+            #         break
+            #     self.find_target_pillar(90)
+            #
+            # elif self.area == "B":
+            #     while self.robot_odom.posy >= 1.09:
+            #         self.robot_controller.set_move_cmd(0.15, 0.3)
+            #         self.robot_controller.publish()
+            #         self.rate.sleep()
+            #     while self.robot_odom.posx <= -0.1:
+            #         self.robot_controller.set_move_cmd(0.2, 0.07)
+            #         self.robot_controller.publish()
+            #         self.rate.sleep()
+            #     self.robot_controller.stop()
+            #     self.finding_pillar = True
+            #     self.set_robot_turning(True)
+            #     self.find_target_pillar(45)
+            #     if self.complete:
+            #         break
+            #     self.set_robot_turning(False)
+            #     self.pillar_lined_with_home = True
+            #     self.find_target_pillar(160)
+            #     self.pillar_lined_with_home = False
+            #     if self.complete:
+            #         break
+            #     self.finding_pillar = False
+            #     self.turn(45)
+            #     while self.robot_odom.posx >= -1.2:
+            #         self.robot_controller.set_move_cmd(0.3, -0.02)
+            #         self.robot_controller.publish()
+            #         self.rate.sleep()
+            #     while self.robot_odom.posy >= 0.2:
+            #         self.robot_controller.set_move_cmd(0.15, 0.25)
+            #         self.robot_controller.publish()
+            #         self.rate.sleep()
+            #     while self.robot_odom.posx <= -0.1:
+            #         self.robot_controller.set_move_cmd(0.3, 0.01)
+            #         self.robot_controller.publish()
+            #         self.rate.sleep()
+            #     self.robot_controller.stop()
+            #     self.turn(15, False)
+            #     self.finding_pillar = True
+            #     self.set_robot_turning(False)
+            #     self.find_target_pillar(120)
+            #     if self.complete:
+            #         break
+            #     self.find_target_pillar(140)
+            #
+            # elif self.area == "C":
+            #     self.turn(90, False)
+            #     while self.robot_odom.posy >= 1.3:
+            #         self.robot_controller.set_move_cmd(0.3, -0.05)
+            #         self.robot_controller.publish()
+            #         self.rate.sleep()
+            #     self.robot_controller.stop()
+            #     self.finding_pillar = True
+            #     self.set_robot_turning(True)
+            #     self.find_target_pillar(90)
+            #     if self.complete:
+            #         break
+            #     self.find_target_pillar(25)
+            #     if self.complete:
+            #         break
+            #     self.turn(115)
+            #     while self.robot_odom.posy >= -1:
+            #         self.robot_controller.set_move_cmd(0.3, 0)
+            #         self.robot_controller.publish()
+            #     self.turn(80, False)
+            #     while self.robot_odom.posx >= 0:
+            #         self.robot_controller.set_move_cmd(0.3, 0)
+            #         self.robot_controller.publish()
+            #     self.robot_controller.stop()
+            #     self.find_target_pillar(90)
+            #
+            # break
+            #
+            # if self.complete:
+            #     print("SEARCH COMPLETE: The robot is now facing the target pillar.")
+            #     break
+            while not self.ctrl_c:
+                for i in range (0,5):
                     self.rate.sleep()
-                self.turn(78)
-                while self.robot_odom.posy <= 1.1631:
-                    self.robot_controller.set_move_cmd(0.2, 0.0)
-                    self.robot_controller.publish()
-                    self.rate.sleep()
-                self.pillar_lined_with_home = True
-                self.find_target_pillar(90)
-                if self.complete:
-                    break
-                self.find_target_pillar(90)
-
-            elif self.area == "B":
-                while self.robot_odom.posy >= 1.09:
-                    self.robot_controller.set_move_cmd(0.15, 0.3)
-                    self.robot_controller.publish()
-                    self.rate.sleep()
-                while self.robot_odom.posx <= -0.1:
-                    self.robot_controller.set_move_cmd(0.2, 0.07)
-                    self.robot_controller.publish()
-                    self.rate.sleep()
-                self.robot_controller.stop()
-                self.finding_pillar = True
-                self.set_robot_turning(True)
-                self.find_target_pillar(45)
-                if self.complete:
-                    break
-                self.set_robot_turning(False)
-                self.pillar_lined_with_home = True
-                self.find_target_pillar(160)
-                self.pillar_lined_with_home = False
-                if self.complete:
-                    break
-                self.finding_pillar = False
-                self.turn(45)
-                while self.robot_odom.posx >= -1.2:
-                    self.robot_controller.set_move_cmd(0.3, -0.02)
-                    self.robot_controller.publish()
-                    self.rate.sleep()
-                while self.robot_odom.posy >= 0.2:
-                    self.robot_controller.set_move_cmd(0.15, 0.25)
-                    self.robot_controller.publish()
-                    self.rate.sleep()
-                while self.robot_odom.posx <= -0.1:
-                    self.robot_controller.set_move_cmd(0.3, 0.01)
-                    self.robot_controller.publish()
-                    self.rate.sleep()
-                self.robot_controller.stop()
-                self.turn(15, False)
-                self.finding_pillar = True
-                self.set_robot_turning(False)
-                self.find_target_pillar(120)
-                if self.complete:
-                    break
-                self.find_target_pillar(140)
-
-            elif self.area == "C":
-                self.turn(90, False)
-                while self.robot_odom.posy >= 1.3:
-                    self.robot_controller.set_move_cmd(0.3, -0.05)
-                    self.robot_controller.publish()
-                    self.rate.sleep()
-                self.robot_controller.stop()
-                self.finding_pillar = True
-                self.set_robot_turning(True)
-                self.find_target_pillar(90)
-                if self.complete:
-                    break
-                self.find_target_pillar(25)
-                if self.complete:
-                    break
-                self.turn(115)
-                while self.robot_odom.posy >= -1:
-                    self.robot_controller.set_move_cmd(0.3, 0)
-                    self.robot_controller.publish()
-                self.turn(80, False)
-                while self.robot_odom.posx >= 0:
-                    self.robot_controller.set_move_cmd(0.3, 0)
-                    self.robot_controller.publish()
-                self.robot_controller.stop()
-                self.find_target_pillar(90)
-
-            break
-
-            if self.complete:
-                print("SEARCH COMPLETE: The robot is now facing the target pillar.")
-                break
+                print(self.beaconing_area())
 
 if __name__ == '__main__':
     search_ob = beacon_search()
