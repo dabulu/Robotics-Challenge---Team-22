@@ -322,6 +322,8 @@ class SearchAS(object):
         # Starting Time and Cancel Boolean
         StartTime = rospy.get_rostime()
         self.cancel = False
+        counter = 0
+        inside_area = False
 
         # Main Navigation Loop
         while rospy.get_rostime().secs - StartTime.secs < 210 and self.cancel == False:
@@ -331,6 +333,22 @@ class SearchAS(object):
             # Move forward while there is not an obstacle in front of the robot
             while self.lidar['range'] >= goal.approach_distance:
                 self.robot_controller.publish()
+
+                # Once 120 seconds have passed, check for area
+                if rospy.get_rostime().secs - StartTime.secs > 1:
+                    if counter < 1:
+                        inside_area = self.beaconing_area()
+                        if inside_area:
+                            counter += 1
+
+                    if inside_area:
+                        while self.find_target_pillar():
+                            self.robot_controller.stop()
+                            self.find_target_pillar()
+                            if self.complete:
+                                self.cancel = True
+                        break
+
                 # check if there has been a request to cancel the action mid-way through:
                 if self.actionserver.is_preempt_requested():
                     rospy.loginfo('Cancelling the movement request.')
@@ -355,6 +373,9 @@ class SearchAS(object):
                 ref_x = self.robot_odom.posx
                 ref_y = self.robot_odom.posy
 
+            if self.cancel:
+                break
+
             self.robot_controller.stop()
             # Periodic checking to see whether it's near a wall
             self.avoid_wall()
@@ -378,6 +399,10 @@ class SearchAS(object):
                     self.turn_again = False
                     break
                 self.robot_controller.publish()
+
+                if self.lidar['closest'] <= 0.15:
+                    self.avoid_wall()
+
                 if self.actionserver.is_preempt_requested():
                     rospy.loginfo('Cancelling the movement request.')
                     self.actionserver.set_preempted()
@@ -405,6 +430,10 @@ class SearchAS(object):
                     self.turn_again = False
                     break
                 self.robot_controller.publish()
+
+                if self.lidar['closest'] <= 0.15:
+                    self.avoid_wall()
+
                 if self.actionserver.is_preempt_requested():
                     rospy.loginfo('Cancelling the movement request.')
                     self.actionserver.set_preempted()
