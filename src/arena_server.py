@@ -354,7 +354,7 @@ class SearchAS(object):
                 self.robot_controller.publish()
 
                 # Once 120 seconds have passed, check for area
-                if rospy.get_rostime().secs - StartTime.secs > 1:
+                if rospy.get_rostime().secs - StartTime.secs > 150:
                     if counter < 1:
                         inside_area = self.beaconing_area()
                         if inside_area:
@@ -412,15 +412,12 @@ class SearchAS(object):
 
             # Turn away from the closest obstacle at most just above 90 degrees
             self.current_yaw = copy.deepcopy(self.robot_odom.yaw2)
-            while abs(self.current_yaw - self.robot_odom.yaw2) < pi/1.8:
+            while abs(self.current_yaw - self.robot_odom.yaw2) < pi/1.7:
                 if self.lidar['wider range'] >= 0.5:
                     self.robot_controller.stop()
                     self.turn_again = False
                     break
                 self.robot_controller.publish()
-
-                if self.lidar['closest'] <= 0.15:
-                    self.avoid_wall()
 
                 if self.actionserver.is_preempt_requested():
                     rospy.loginfo('Cancelling the movement request.')
@@ -449,9 +446,6 @@ class SearchAS(object):
                     self.turn_again = False
                     break
                 self.robot_controller.publish()
-
-                if self.lidar['closest'] <= 0.15:
-                    self.avoid_wall()
 
                 if self.actionserver.is_preempt_requested():
                     rospy.loginfo('Cancelling the movement request.')
